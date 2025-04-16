@@ -890,8 +890,8 @@ auto_reload()
 {
     self endon("stop_autoreload");
     self endon("disconnect");
-    level waittill("round_end_finished");
-
+    self waittill("next_wave_notify");
+    
     weapon = self getcurrentweapon();
     self setweaponammoclip(weapon, 0);
 
