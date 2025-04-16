@@ -20,19 +20,22 @@ main()
     setdvar("g_speed", 190);
     setdvar("g_gravity", 785);
     setdvar("bg_bounces", 1);
+
+    replacefunc(scripts\cp\cp_weapon::can_upgrade, ::can_upgrade_hook);
+    replacefunc(scripts\cp\zombies\zombies_wor::launch_glasses, ::launch_glasses_hook);
 }
 
 init()
 {
     // dont load unless its zombies so we can still use mp scripts
-    if(!is_zombies_mode())
+    if (!is_zombies_mode())
     {
         print("^1GAMETYPE IS NOT ZOMBIES - WILL NOT LOAD");
         return;
     }
 
     level thread on_player_connect();
-    level thread set_points(4000);
+    level thread set_points(40000);
 
     level.damage_original = level.callbackplayerdamage;
     level.callbackplayerdamage = ::callback_playerdamage_stub; // no fall damage
@@ -82,6 +85,7 @@ on_event()
             self thread check_weapon_class();
             self thread no_clip();
             self thread bounce_loop();
+            self thread frozen_zombies_loop();
             self thread save_pos_bind();
             self thread load_pos_bind();
             self thread invulnerability();
@@ -94,7 +98,7 @@ on_event()
             self _meth_84DD(true);
             
             // setup starting class
-            self.weapon_list = list("zfreeze_semtex_mp,iw7_knife_zm,iw7_spas_zmr+loot0,iw7_cheytacc_zm"); // equipment to primary
+            self.weapon_list = list("frag_grenade_zm,zfreeze_semtex_mp,iw7_knife_zm,iw7_spas_zmr+loot0,iw7_cheytacc_zm+cheytacscope_camo"); // equipment to primary
 
             // set default melee weapon
             self.starting_melee = "iw7_knife_zm";
@@ -121,6 +125,7 @@ on_event()
 
 persistence_setup()
 {
+    self.take_weapon = true;
     self unipers("bouncecount", "0");
 
     for(i=1;i<8;i++)
@@ -148,12 +153,16 @@ render_menu_options()
         self add_option("settings", undefined, ::new_menu, "settings");
         self add_option("weapons", undefined, ::new_menu, "weapons");
         self add_option("perks", undefined, ::new_menu, "perks");
+        self add_option("zombies", undefined, ::new_menu, "zombies");
         self add_option("clients", undefined, ::new_menu, "all players");
         break;
     case "settings":
         self add_menu("settings");
         self add_toggle("auto prone", undefined, ::do_auto_prone, self.auto_prone);
+        self add_toggle("auto reload", undefined, ::do_auto_reload, self.auto_reload);
+        self add_toggle("fake elevators", undefined, ::toggle_elevators, self.elevators);
         self add_toggle("gesture bind", undefined, ::toggle_gesture_bind, self.gesture_bind);
+        self add_option("give sunglasses", undefined, ::launch_glasses_hook);
         self add_option("spawn bounce", undefined, ::spawn_bounce);
         self add_option("delete last bounce", undefined, ::delete_bounce);
         self add_option("fill consumables", undefined, ::fill_consumables);
@@ -178,7 +187,7 @@ render_menu_options()
         self add_option("give starter perks", undefined, ::set_starter_perks);
         foreach(perk in perks)
         {
-            self add_option(perk, undefined, ::set_zombie_perk, perk);
+            self add_option(get_perk_display_name(perk), undefined, ::set_zombie_perk, perk);
         }
         break;
     case "snipers":
@@ -236,6 +245,12 @@ render_menu_options()
         self add_option("titan", undefined, ::g_weapon, "iw7_lmg03_zm");
         self add_option("atlas", undefined, ::g_weapon, "iw7_unsalmg_zm");
         break;
+    case "zombies":
+        self add_menu("zombies");
+        self add_option("teleport all zombies", undefined, ::teleport_zombies);
+        self add_option("freeze all zombies", undefined, ::freeze_all_zombies);
+        self add_toggle("zombies ignore you", undefined, ::zombies_ignore_me, self.ignoreme);
+        break;
     case "others":
         self add_menu("others");
         self add_option("c4", undefined, ::g_weapon, "c4_zm");
@@ -282,36 +297,113 @@ player_index(menu, player)
     }
 }
 
-turn_on_power() // doesnt work but i need it to
+give_xp(xp) // xp popup
 {
-	level.interactions = [];
-	level.interaction_hintstrings = [];
-	level.all_interaction_structs = scripts\engine\utility::getstructarray("interaction","targetname");
-	level.current_interaction_structs = level.all_interaction_structs;
+    self thread scripts\cp\cp_persistence::give_player_xp(xp, 1);
+}
 
-	foreach(var_01 in level.current_interaction_structs)
-	{
-		if(!isdefined(var_01.name))
-		{
-			var_01.name = var_01.script_noteworthy;
-		}
+give_sunglasses() // im so cool and epic and stuff
+{
+    // cant just call give_glasses_power because when you force give & turn off vision doesnt go away
+    self thread launch_glasses_hook();
+}
 
-		if(!isdefined(var_01.script_parameters))
-		{
-			var_01.script_parameters = "default";
-		}
+// hook so the glasses dont fucking launch in front of you
+launch_glasses_hook()
+{
+    self endon("deleting_glasses");
+    // scripts\cp\powers\coop_powers::removepower("power_glasses"); // causes a shit ton of errors for some reason lol
+    var_00 = 25;
+    var_01 = self gettagorigin("tag_eye");
+    var_02 = self gettagangles("tag_eye");
+    var_02 = anglestoforward(var_02);
+    var_03 = vectornormalize(var_02) + (0,0,0.25);
+    var_03 = var_03 * var_00;
+    var_04 = self getvelocity();
+    var_03 = var_03 + var_04;
+    var_05 = spawn("script_model",var_01);
+    var_05 setmodel("zmb_sunglass_01_wm");
+    var_05 physicslaunchserver(var_01,var_03);
+    wait(0.1);
+    var_05 thread scripts\cp\zombies\zombies_wor::pick_up_knocked_off_glasses();
+    var_05 thread scripts\cp\zombies\zombies_wor::delete_glasses_after_time(10);
+    var_05 waittill("trigger",var_06);
+    var_06 scripts\cp\zombies\zombies_wor::give_glasses_power();
+    var_05 notify("glasses_picked_up");
+    var_05 delete();
+}
 
-		if(var_01.script_parameters == "requires_power")
-		{
-			var_01.requires_power = 1;
-			var_01.powered_on = 1;
-			var_01.power_area = scripts\cp\cp_interaction::get_area_for_power(var_01);
-			continue;
-		}
+// zombies stuff
+teleport_zombies()
+{
+    zombies = scripts\cp\cp_agent_utils::getaliveagentsofteam("axis");
 
-		var_01.requires_power = 1;
-		var_01.powered_on = 1;
-	}
+    foreach(zombie in zombies)
+    {
+        zombie setorigin(bullettrace(self gettagorigin("j_head"), self gettagorigin("j_head") + anglestoforward(self getplayerangles()) * 1000000, 0, self)["position"]);
+    }
+}
+
+freeze_all_zombies()
+{
+    if(!self.frozen_zombies)
+    {
+        self iprintln("zombies ^2frozen");
+        self.frozen_zombies = true;
+
+        zombies = scripts\cp\cp_agent_utils::getaliveagentsofteam("axis");
+        foreach(zombie in zombies)
+        {
+            zombie.saved_origin = zombie.origin;
+        }
+    } 
+    else
+    {
+        self iprintln("zombies ^1unfrozen");
+        self.frozen_zombies = false;
+
+        zombies = scripts\cp\cp_agent_utils::getaliveagentsofteam("axis");
+        foreach(zombie in zombies)
+        {
+            zombie.saved_origin = undefined;
+        }
+    }
+}
+
+frozen_zombies_loop()
+{
+    self endon("disconnect");
+    level endon("game_ended");
+
+    for(;;)
+    {
+        zombies = scripts\cp\cp_agent_utils::getaliveagentsofteam("axis");
+
+        if(is_true(self.frozen_zombies))
+        {
+            foreach(zombie in zombies)
+            {
+                zombie setorigin(zombie.saved_origin);
+            }
+        }
+
+        wait 0.05;
+    }
+}
+
+
+zombies_ignore_me()
+{
+    if (!self.ignoreme)
+    {
+        self iprintln("zombies ignore you ^2on");
+        self.ignoreme = true;
+    }
+    else
+    {
+        self iprintln("zombies ignore you ^1off");
+        self.ignoreme = false;
+    }
 }
 
 invulnerability()
@@ -321,16 +413,10 @@ invulnerability()
 
 	for(;;)
 	{
-        self thread set_health();
+        self.health = 999;
+        self.maxhealth = 999;
         wait 0.05;
 	}
-}
-
-// dont know if this will work but when setting self.health / self.maxhealth in the for loop it just errors 
-set_health()
-{
-    self.health = 9999;
-    self.maxhealth = 9999;
 }
 
 g_weapon(i)
@@ -358,6 +444,9 @@ save_position()
 
 load_position()
 {
+    if (!isDefined(self.saved_origin))
+        return;
+
     self SetOrigin(self.saved_origin);
     self SetPlayerAngles(self.saved_angles);
 }
@@ -454,6 +543,7 @@ toggle_take_weapon()
     self iprintln("taking weapon " + (self.take_weapon ? "^2on" : "^1off"));
 }
 
+// fills but doesnt let you select -- look into this
 fill_consumables() // fill all card slots
 {
     self notify("meter_full");
@@ -497,6 +587,39 @@ perkaholic()
         {
             self thread set_zombie_perk(perk);
         }
+    }
+}
+
+get_perk_display_name(perk)
+{
+    switch(perk)
+    {
+        case "perk_machine_revive":
+            return "Up n Atoms";
+        case "perk_machine_tough":
+            return "Tuff Enuff";
+        case "perk_machine_run":
+            return "Racing Stripes";
+        case "perk_machine_flash":
+            return "Quickies";
+        case "perk_machine_more":
+            return "Mule Munchies";
+        case "perk_machine_rat_a_tat":
+            return "Bang Bangs";
+        case "perk_machine_boom":
+            return "Bomb Stoppers";
+        case "perk_machine_zap":
+            return "Blue Boltz";
+        case "perk_machine_fwoosh":
+            return "Trail Blazers";  
+        case "perk_machine_smack":
+            return "Slappy Taffy";  
+        case "perk_machine_deadeye":
+            return "Deadeye Sign";  
+        case "perk_machine_change":
+            return "Change Chews";  
+        default:
+            break;
     }
 }
 
@@ -606,6 +729,80 @@ bounce_loop()
     }
 }
 
+// fake elevators
+toggle_elevators()
+{
+    if (!isdefined(self.elevators)) self.elevators = false;
+
+    if (!self.elevators)
+    {
+        self iprintln("elevators ^2on");
+        self iprintln("^7crouch + aim to elevate, jump to detach");
+        self thread elevators();
+    }
+    else if (self.elevators)
+    {
+        self iprintln("elevators ^1off");
+        self notify("stop_elevator");
+    }
+
+    self.elevators = !self.elevators;
+}
+
+elevators()
+{
+    self endon("disconnect");
+    self endon("stop_elevator");
+    level endon("game_ended");
+
+    for(;;)
+    {
+        if (self adsButtonPressed() && self isButtonPressed("+stance") && self isOnGround() && !self isOnLadder() && !self isMantling())
+        {
+            self thread elevator_logic();
+            wait 0.25;
+        }
+        else if (self isButtonPressed("+gostand"))
+        {
+            self thread stop_elevator();
+            wait 0.05;
+        }
+
+        wait 0.05;
+    }
+}
+
+elevator_logic()
+{
+    self endon("end_elevator");
+    level endon("game_ended");
+    self endon("disconnect");
+
+    self.elevator = spawn("script_origin", self.origin, 1);
+    self playerLinkTo(self.elevator, undefined);
+
+    for(;;)
+    {
+        self.elevating = true;
+        self.o = self.elevator.origin;
+        wait 0.05;
+        time = randomintrange(8,20);
+        self.elevator.origin = self.o + (0, 0, time);
+        wait 0.05;
+    }
+}
+
+stop_elevator()
+{
+    if (isdefined(self.elevator))
+    {
+        self unlink();
+        self.elevator delete();
+        self.elevating = undefined;
+        self notify("end_elevator");
+    }
+}
+
 // auto proning
 do_auto_prone()
 {
@@ -661,13 +858,44 @@ loop_auto_prone()
     self endon("temp_end");
     self endon("stop_auto_prone");
     self endon("disconnect");
-    level endon("killcam_begin"); // instead of game_ended
+    level endon("game_ended"); 
 
     for(;;)
     {
         self setStance("prone");
         wait .01;
     }
+}
+
+// auto reload
+do_auto_reload()
+{
+    if (!isdefined(self.auto_reload)) self.auto_reload = false;
+
+    if (!self.auto_reload)
+    {
+        self iprintln("auto reload ^2on");
+        self thread auto_reload();
+    }
+    else if (self.auto_reload)
+    {
+        self iprintln("auto reload ^1off");
+        self notify("stop_autoreload");
+    }
+
+    self.auto_reload = !self.auto_reload;
+}
+
+auto_reload()
+{
+    self endon("stop_autoreload");
+    self endon("disconnect");
+    level waittill("round_end_finished");
+
+    weapon = self getcurrentweapon();
+    self setweaponammoclip(weapon, 0);
+
+    self thread auto_reload(); // reset function for next round
 }
 
 // lets create the menu now
@@ -1590,7 +1818,11 @@ is_valid_weapon(weapon)
 
     weapon_class = getweaponclass(weapon);
     if (weapon_class == "weapon_sniper")
+    {
         return true;
+    }
+
+    return false;
 }
 
 perstovector(pers)
@@ -1607,8 +1839,8 @@ list(key)
 
 randomize(key)
 {
-    r = strTok(key, ", ");
-    random = RandomInt(r.size);
+    r = strtok(key, ", ");
+    random = randomint(r.size);
     final = r[random];
     return final;
 }
@@ -1693,6 +1925,11 @@ check_weapon_class()
 set_points(points)
 {
     level._id_10DA7 = points;
+}
+
+can_upgrade_hook(param_00,param_01)
+{
+	return 1;
 }
 
 void() {}
