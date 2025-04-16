@@ -6,8 +6,6 @@
     start date: 4/14/25
 
     TODO:
-    - teleport zombies to crosshair
-    - freeze zombies
     - turn on power / open all doors
 */
 
@@ -126,6 +124,10 @@ on_event()
 persistence_setup()
 {
     self.take_weapon = true;
+
+    self.aimbot_range = 500;
+    self.aimbot_delay = 0;
+
     self unipers("bouncecount", "0");
 
     for(i=1;i<8;i++)
@@ -149,11 +151,12 @@ render_menu_options()
     switch(menu)
     {
     case "catbox":
-        self add_menu("#catbox");
+        self add_menu("@catbox");
         self add_option("settings", undefined, ::new_menu, "settings");
         self add_option("weapons", undefined, ::new_menu, "weapons");
         self add_option("perks", undefined, ::new_menu, "perks");
         self add_option("zombies", undefined, ::new_menu, "zombies");
+        self add_option("aimbot", undefined, ::new_menu, "aimbot");
         self add_option("dvars", undefined, ::new_menu, "dvars");
         self add_option("clients", undefined, ::new_menu, "all players");
         break;
@@ -252,14 +255,25 @@ render_menu_options()
         self add_option("freeze all zombies", undefined, ::freeze_all_zombies);
         self add_toggle("zombies ignore you", undefined, ::zombies_ignore_me, self.ignoreme);
         break;
+    case "aimbot":
+        self add_menu("aimbot");
+        self add_toggle("toggle aimbot", undefined, ::toggle_aimbot, self.aimbot);
+        self add_option("aimbot weapon", undefined, ::set_aimbot_weapon);
+        self add_increment("aimbot range", increment_controls, ::set_aimbot_range, self.aimbot_range, 100, 4000, 100);
+        self add_increment("aimbot delay", increment_controls, ::set_aimbot_delay, self.aimbot_delay, 0, 1, 0.1);
+        break;
     case "dvars":
         // add_increment(text, summary, function, start, minimum, maximum, increment, argument_1, argument_2, argument_3)
         self add_menu("dvars");
-        self add_increment("timescale", undefined, ::set_timescale, getdvarfloat("timescale"), 0.25, 1, 0.25);
-        self add_increment("gravity", undefined, ::set_gravity, getdvarint("g_gravity"), 100, 800, 25);
-        self add_increment("bounces", undefined, ::set_bounces, getdvarint("bg_bounces"), 0, 1, 1);
-        self add_increment("speed", undefined, ::set_speed, getdvarint("g_speed"), 50, 300, 5);
-        self add_increment("unlimited sprint", undefined, ::set_unlimited_sprint, getdvarint("player_sprintUnlimited"), 0, 1, 1);
+        self add_increment("timescale", increment_controls, ::set_timescale, getdvarfloat("timescale"), 0.25, 1, 0.25);
+        self add_increment("gravity", increment_controls, ::set_gravity, getdvarint("g_gravity"), 100, 800, 25);
+        self add_increment("bounces", increment_controls, ::set_bounces, getdvarint("bg_bounces"), 0, 1, 1);
+        self add_increment("speed", increment_controls, ::set_speed, getdvarint("g_speed"), 50, 300, 5);
+        self add_increment("jump height", increment_controls, ::set_jump_height, getdvarint("jump_height"), 40, 500, 5);
+        self add_increment("weapon spread", increment_controls, ::set_weapon_spread, getdvarfloat("perk_weapSpreadMultiplier"), 0, 0.65, 0.05);
+        self add_increment("reload time", increment_controls, ::set_reload_time, getdvarfloat("perk_weapReloadMultiplier"), 0.05, 1, 0.05);
+        self add_increment("empty reload time", increment_controls, ::set_empty_reload_time, getdvarfloat("perk_weapReloadMultiplierEmpty"), 0.05, 1, 0.05);
+        self add_increment("unlimited sprint", increment_controls, ::set_unlimited_sprint, getdvarint("player_sprintUnlimited"), 0, 1, 1);
         break;
     case "others":
         self add_menu("others");
@@ -307,6 +321,74 @@ player_index(menu, player)
     }
 }
 
+// aimbot stuff
+toggle_aimbot()
+{
+    if (!isdefined(self.aimbot)) self.aimbot = false;
+
+    if (!self.aimbot)
+    {
+        self iprintln("aimbot ^2on ^7(^:" + self getcurrentweapon() + "^7)");
+        self.aimbot_weapon = self getcurrentweapon();
+        self thread aimbot();
+    }
+    else if (self.aimbot)
+    {
+        self iprintln("aimbot ^1off");
+        self notify("stop_aimbot");
+    }
+
+    self.aimbot = !self.aimbot;
+}
+
+aimbot() 
+{
+    self endon("disconnect");
+    self endon("stop_aimbot");
+
+    for(;;)
+    {
+        self waittill("weapon_fired");
+
+        zombies = scripts\cp\cp_agent_utils::getaliveagentsofteam("axis");
+
+        foreach(zombie in zombies) 
+        {
+            if (is_true(self.aimbot_weapon) && self getcurrentweapon() == self.aimbot_weapon)
+            {
+                trace = self bullet_trace();
+                if(distance(zombie.origin, trace) < self.aimbot_range) 
+                {
+                    // so we have to do a dodamage call here because callbackplayerdamage cries for some reason
+                    // i really need to find the red hitmarker feedback idk what the shader is lol
+                    if(is_true(self.aimbot_delay) && self.aimbot_delay > 0)
+                        wait (self.aimbot_delay);
+
+                    zombie dodamage(500, zombie.origin, self, self, "MOD_TRIGGER_HURT", self getcurrentweapon());
+                    self scripts\cp\cp_damage::updatedamagefeedback("hitcritical");
+                }
+            }
+        }	
+    }
+}
+
+// set to int & floats just incase here
+set_aimbot_range(value)
+{
+    self.aimbot_range = int(value);
+}
+
+set_aimbot_delay(value)
+{
+    self.aimbot_delay = float(value);
+}
+
+set_aimbot_weapon()
+{
+    self.aimbot_weapon = self getcurrentweapon();
+    self iprintlnbold("aimbot weapon set to ^:" + self.aimbot_weapon);
+}
+
 // set dvar stuff
 set_timescale(value)
 {
@@ -316,6 +398,7 @@ set_timescale(value)
 set_gravity(value)
 {
     setdvar("g_gravity", value);
+    setdvar("bg_gravity", value);
 }
 
 set_bounces(value)
@@ -331,6 +414,26 @@ set_speed(value)
 set_unlimited_sprint(value)
 {
     setdvar("player_sprintUnlimited", value);
+}
+
+set_jump_height(value)
+{
+    setdvar("jump_height", value);
+}
+
+set_weapon_spread(value)
+{
+    setdvar("perk_weapSpreadMultiplier", value);
+}
+
+set_reload_time(value)
+{
+    setdvar("perk_weapReloadMultiplier", value);
+}
+
+set_empty_reload_time(value)
+{
+    setdvar("perk_weapReloadMultiplierEmpty", value);
 }
 
 give_xp(xp) // xp popup
@@ -472,8 +575,8 @@ intro()
 // save and loading
 save_position()
 {
-    self.saved_origin = self GetOrigin();
-    self.saved_angles = self GetPlayerAngles();
+    self.saved_origin = self getorigin();
+    self.saved_angles = self getplayerangles();
     self iprintln("^:position saved - " + self.saved_origin + " / " + self.saved_angles);
 }
 
@@ -526,7 +629,8 @@ no_clip()
     for(;;)
     {
         self waittill("+melee_zoom");
-        if (self GetStance() == "crouch")
+        print("yea");
+        if (self adsButtonPressed())
         {
             if (b == 0)
             {
@@ -555,7 +659,7 @@ go_no_clip()
 
     for(;;)
     {
-        vec = anglestoforward(self getPlayerAngles());
+        vec = anglestoforward(self getplayerangles());
 
         if (self FragButtonPressed())
         {
@@ -603,6 +707,7 @@ set_zombie_perk(perk)
     }
 }
 
+// give perks immediately for no gesture anim
 give_zombie_perk(perk)
 {
     self thread scripts\cp\zombies\zombies_perk_machines::give_zombies_perk_immediate(perk, 1);
@@ -731,8 +836,8 @@ spawn_bounce()
     x = int(self getpers("bouncecount"));
     x++;
     self setpers("bouncecount",x);
-    self setpers("bouncepos" + x, self GetOrigin()[0] + "," + self GetOrigin()[1] + "," + self GetOrigin()[2]);
-    self iprintlnbold("^:spawned a bounce at " + self GetOrigin());
+    self setpers("bouncepos" + x, self getorigin()[0] + "," + self getorigin()[1] + "," + self getorigin()[2]);
+    self iprintlnbold("^:spawned a bounce at " + self getorigin());
 }
 
 delete_bounce()
@@ -754,7 +859,7 @@ bounce_loop()
         for(i=1;i<int(self getpers("bouncecount")) + 1;i++)
         {
             pos = perstovector(self getpers("bouncepos" + i));
-            if (Distance(self GetOrigin(), pos) < 90 && self GetVelocity()[2] < -250)
+            if (Distance(self getorigin(), pos) < 90 && self GetVelocity()[2] < -250)
             {
                 self SetVelocity(self GetVelocity() - (0,0,self GetVelocity()[2] * 2));
                 wait 0.2;
@@ -1928,7 +2033,7 @@ monitor_buttons()
     self.now_monitoring = true;
     
     if (!isDefined(self.button_actions))
-        self.button_actions = ["+melee", "+melee_zoom", "+melee_breath", "+stance", "+gostand", "weapnext", "+actionslot 1", "+actionslot 2", "+actionslot 3", "+actionslot 4", "+forward", "+back", "+moveleft", "+moveright"];
+        self.button_actions = ["+sprint", "+melee", "+melee_zoom", "+melee_breath", "+stance", "+gostand", "weapnext", "+actionslot 1", "+actionslot 2", "+actionslot 3", "+actionslot 4", "+forward", "+back", "+moveleft", "+moveright"];
     if (!isDefined(self.button_pressed))
         self.button_pressed = [];
     
@@ -1938,7 +2043,7 @@ monitor_buttons()
 
 create_notify()
 {
-    foreach(value in StrTok("+actionslot 1,+actionslot 2,+actionslot 3,+actionslot 4,+frag,+smoke,+melee,+melee_zoom,+stance,+gostand,+switchseat,+usereload", ",")) 
+    foreach(value in StrTok("+sprint,+actionslot 1,+actionslot 2,+actionslot 3,+actionslot 4,+frag,+smoke,+melee,+melee_zoom,+stance,+gostand,+switchseat,+usereload", ",")) 
     {
         self NotifyOnPlayerCommand(value, value);
     }
@@ -1951,8 +2056,8 @@ check_weapon_class()
 
     for(;;)
     {
-        // self iprintln("^:" + self getCurrentWeapon() + " | " + getweaponclass(self getCurrentWeapon()));
-        print(self getCurrentWeapon() + " | " + getweaponclass(self getCurrentWeapon()));
+        // self iprintln("^:" + self getcurrentweapon() + " | " + getweaponclass(self getcurrentweapon()));
+        print(self getcurrentweapon() + " | " + getweaponclass(self getcurrentweapon()));
         wait 1;
     }
 }
@@ -1965,6 +2070,12 @@ add_points(value)
 can_upgrade_hook(param_00,param_01)
 {
 	return 1;
+}
+
+bullet_trace() 
+{
+    point = bullettrace(self geteye(), self geteye() + anglestoforward(self getplayerangles()) * 1000000, 0, self)["position"];
+    return point;
 }
 
 void() {}
