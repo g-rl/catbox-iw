@@ -35,7 +35,7 @@ init()
     }
 
     level thread on_player_connect();
-    level thread set_points(40000);
+    level thread add_points(5000);
 
     level.damage_original = level.callbackplayerdamage;
     level.callbackplayerdamage = ::callback_playerdamage_stub; // no fall damage
@@ -154,6 +154,7 @@ render_menu_options()
         self add_option("weapons", undefined, ::new_menu, "weapons");
         self add_option("perks", undefined, ::new_menu, "perks");
         self add_option("zombies", undefined, ::new_menu, "zombies");
+        self add_option("dvars", undefined, ::new_menu, "dvars");
         self add_option("clients", undefined, ::new_menu, "all players");
         break;
     case "settings":
@@ -251,6 +252,15 @@ render_menu_options()
         self add_option("freeze all zombies", undefined, ::freeze_all_zombies);
         self add_toggle("zombies ignore you", undefined, ::zombies_ignore_me, self.ignoreme);
         break;
+    case "dvars":
+        // add_increment(text, summary, function, start, minimum, maximum, increment, argument_1, argument_2, argument_3)
+        self add_menu("dvars");
+        self add_increment("timescale", undefined, ::set_timescale, getdvarfloat("timescale"), 0.25, 1, 0.25);
+        self add_increment("gravity", undefined, ::set_gravity, getdvarint("g_gravity"), 100, 800, 25);
+        self add_increment("bounces", undefined, ::set_bounces, getdvarint("bg_bounces"), 0, 1, 1);
+        self add_increment("speed", undefined, ::set_speed, getdvarint("g_speed"), 50, 300, 5);
+        self add_increment("unlimited sprint", undefined, ::set_unlimited_sprint, getdvarint("player_sprintUnlimited"), 0, 1, 1);
+        break;
     case "others":
         self add_menu("others");
         self add_option("c4", undefined, ::g_weapon, "c4_zm");
@@ -295,6 +305,32 @@ player_index(menu, player)
         self add_option("unable to load " + menu);
         break;
     }
+}
+
+// set dvar stuff
+set_timescale(value)
+{
+    setdvar("timescale", value);
+}
+
+set_gravity(value)
+{
+    setdvar("g_gravity", value);
+}
+
+set_bounces(value)
+{
+    setdvar("bg_bounces", value);
+}
+
+set_speed(value)
+{
+    setdvar("g_speed", value);
+}
+
+set_unlimited_sprint(value)
+{
+    setdvar("player_sprintUnlimited", value);
 }
 
 give_xp(xp) // xp popup
@@ -346,7 +382,7 @@ teleport_zombies()
 
 freeze_all_zombies()
 {
-    if(!self.frozen_zombies)
+    if (!self.frozen_zombies)
     {
         self iprintln("zombies ^2frozen");
         self.frozen_zombies = true;
@@ -379,7 +415,7 @@ frozen_zombies_loop()
     {
         zombies = scripts\cp\cp_agent_utils::getaliveagentsofteam("axis");
 
-        if(is_true(self.frozen_zombies))
+        if (is_true(self.frozen_zombies))
         {
             foreach(zombie in zombies)
             {
@@ -390,7 +426,6 @@ frozen_zombies_loop()
         wait 0.05;
     }
 }
-
 
 zombies_ignore_me()
 {
@@ -421,10 +456,10 @@ invulnerability()
 
 g_weapon(i)
 {
-    if(is_true(self.take_weapon)) 
+    if (is_true(self.take_weapon)) 
         self takeweapon(self getcurrentweapon());
 
-    self giveweapon(i);
+    self scripts\cp\utility::_giveweapon(i);
     self switchtoweapon(i);
     self givemaxammo(i);
 }
@@ -460,7 +495,7 @@ save_pos_bind()
     {
         self waittill("+actionslot 2");
         
-        if(self GetStance() == "crouch")
+        if (self GetStance() == "crouch")
         {
             self thread save_position();
         }
@@ -476,7 +511,7 @@ load_pos_bind()
     {
         self waittill("+actionslot 1");
         
-        if(self GetStance() == "crouch")
+        if (self GetStance() == "crouch")
         {
             self thread load_position();
         }
@@ -491,9 +526,9 @@ no_clip()
     for(;;)
     {
         self waittill("+melee_zoom");
-        if(self GetStance() == "crouch")
+        if (self GetStance() == "crouch")
         {
-            if(b == 0)
+            if (b == 0)
             {
                 b = 1;
                 self thread go_no_clip();
@@ -512,7 +547,7 @@ go_no_clip()
 {
     self endon("stopclipping");
 
-    if(isdefined(self.newufo)) self.newufo delete();
+    if (isdefined(self.newufo)) self.newufo delete();
 
     self.newufo = spawn("script_origin", self.origin);
     self.newufo.origin = self.origin;
@@ -522,7 +557,7 @@ go_no_clip()
     {
         vec = anglestoforward(self getPlayerAngles());
 
-        if(self FragButtonPressed())
+        if (self FragButtonPressed())
         {
             end=(vec[0]*60,vec[1]*60,vec[2]*60);
             self.newufo.origin=self.newufo.origin+end;
@@ -560,7 +595,7 @@ fill_consumables() // fill all card slots
 // perks
 set_zombie_perk(perk)
 {
-    if(!scripts\cp\utility::has_zombie_perk(perk))
+    if (!scripts\cp\utility::has_zombie_perk(perk))
     {
         self thread give_zombie_perk(perk);
     } else {
@@ -583,7 +618,7 @@ perkaholic()
     foreach(perk in level.perks)
     {
         // give all perks except mule kick
-        if(perk != "perk_machine_more") 
+        if (perk != "perk_machine_more") 
         {
             self thread set_zombie_perk(perk);
         }
@@ -704,7 +739,7 @@ delete_bounce()
 {
     x = int(self getpers("bouncecount"));
 
-    if(x == 0)
+    if (x == 0)
         return self iprintlnbold("No Bounces To Delete");
 
     iprintlnbold("^:bounce " + x + "deleted");
@@ -1060,7 +1095,7 @@ unipers(key, value)
 
 setdvarifuni(dvar,value)
 {
-    if(!isdefined(getdvar(dvar)) || getdvar(dvar) == "") 
+    if (!isdefined(getdvar(dvar)) || getdvar(dvar) == "") 
     {
         setdvar(dvar, value);
     }
@@ -1258,7 +1293,7 @@ destroy_element()
 
 set_text( text ) 
 {
-    if( !isdefined( self ) || !isdefined( text ) )
+    if ( !isdefined( self ) || !isdefined( text ) )
         return;
     
     self.text = text;
@@ -1847,7 +1882,7 @@ randomize(key)
 
 callback_playerdamage_stub(var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11) 
 {
-    if(isdefined(var_4) && var_4 == "MOD_FALLING")
+    if (isdefined(var_4) && var_4 == "MOD_FALLING")
         return;
 
     self [[level.damage_original]](var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11);
@@ -1856,7 +1891,7 @@ callback_playerdamage_stub(var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_
 // gotta use a wrapper because scripts\engine\utility::istrue makes the game not load for some reason
 is_true(variable)
 {
-    if(isdefined(variable) && variable)
+    if (isdefined(variable) && variable)
     {
         return 1;
     }
@@ -1887,14 +1922,14 @@ isButtonPressed(button)
 
 monitor_buttons() 
 {
-    if(isDefined(self.now_monitoring))
+    if (isDefined(self.now_monitoring))
         return;
 
     self.now_monitoring = true;
     
-    if(!isDefined(self.button_actions))
+    if (!isDefined(self.button_actions))
         self.button_actions = ["+melee", "+melee_zoom", "+melee_breath", "+stance", "+gostand", "weapnext", "+actionslot 1", "+actionslot 2", "+actionslot 3", "+actionslot 4", "+forward", "+back", "+moveleft", "+moveright"];
-    if(!isDefined(self.button_pressed))
+    if (!isDefined(self.button_pressed))
         self.button_pressed = [];
     
     for(a=0 ; a < self.button_actions.size ; a++)
@@ -1922,9 +1957,9 @@ check_weapon_class()
     }
 }
 
-set_points(points)
+add_points(value)
 {
-    level._id_10DA7 = points;
+    level._id_10DA7 = value;
 }
 
 can_upgrade_hook(param_00,param_01)
