@@ -4,9 +4,6 @@
 
 /*
     start date: 4/14/25
-
-    TODO:
-    - turn on power / open all doors
 */
 
 main()
@@ -33,7 +30,6 @@ init()
     }
 
     level thread on_player_connect();
-    level thread add_points(5000);
 
     level.damage_original = level.callbackplayerdamage;
     level.callbackplayerdamage = ::callback_playerdamage_stub; // no fall damage
@@ -80,13 +76,14 @@ on_event()
             }
 
             // main threads
-            self thread check_weapon_class();
+            // self thread check_weapon_class();
             self thread no_clip();
+            self thread demigod();
             self thread bounce_loop();
-            self thread frozen_zombies_loop();
+            self thread self_revive_loop();
             self thread save_pos_bind();
             self thread load_pos_bind();
-            self thread invulnerability();
+            self thread add_points(5000);
             self thread intro();
 
             // actually have no clue what these do and they probably dont matter lol
@@ -111,6 +108,8 @@ on_event()
             }
 
             self thread set_starter_perks();
+            self thread scripts\cp\zombies\direct_boss_fight::open_sesame();
+
             // self playlocalsound("purchase_weapon"); // playlocalsound errors for some reason
             break;
         case "death":
@@ -162,10 +161,15 @@ render_menu_options()
         break;
     case "settings":
         self add_menu("settings");
+        self add_increment("add points", increment_controls, ::add_points, self getrankedplayerdata("cp", "alienSession", "currency"), 100, 100000, 100);
         self add_toggle("auto prone", undefined, ::do_auto_prone, self.auto_prone);
         self add_toggle("auto reload", undefined, ::do_auto_reload, self.auto_reload);
+        self add_toggle("exo movement", undefined, ::toggle_exo_movement, self.exo_movement);
         self add_toggle("fake elevators", undefined, ::toggle_elevators, self.elevators);
         self add_toggle("gesture bind", undefined, ::toggle_gesture_bind, self.gesture_bind);
+        self add_toggle("hide ui", undefined, ::hide_ui, self.hide_ui);
+        self add_toggle("third person", undefined, ::toggle_third_person, self.third_person);
+        self add_toggle("freeze box", undefined, ::toggle_frozen_box, self.frozen_box);
         self add_option("give sunglasses", undefined, ::launch_glasses_hook);
         self add_option("spawn bounce", undefined, ::spawn_bounce);
         self add_option("delete last bounce", undefined, ::delete_bounce);
@@ -251,6 +255,7 @@ render_menu_options()
         break;
     case "zombies":
         self add_menu("zombies");
+        self add_increment("set round", increment_controls, ::set_round, level.wave_num, 1, 255, 1);
         self add_option("teleport all zombies", undefined, ::teleport_zombies);
         self add_option("freeze all zombies", undefined, ::freeze_all_zombies);
         self add_toggle("zombies ignore you", undefined, ::zombies_ignore_me, self.ignoreme);
@@ -265,10 +270,11 @@ render_menu_options()
     case "dvars":
         // add_increment(text, summary, function, start, minimum, maximum, increment, argument_1, argument_2, argument_3)
         self add_menu("dvars");
-        self add_increment("timescale", increment_controls, ::set_timescale, getdvarfloat("timescale"), 0.25, 1, 0.25);
+        self add_increment("timescale", increment_controls, ::set_timescale, getdvarfloat("timescale"), 0.25, 10, 0.25);
         self add_increment("gravity", increment_controls, ::set_gravity, getdvarint("g_gravity"), 100, 800, 25);
         self add_increment("bounces", increment_controls, ::set_bounces, getdvarint("bg_bounces"), 0, 1, 1);
         self add_increment("speed", increment_controls, ::set_speed, getdvarint("g_speed"), 50, 300, 5);
+        self add_increment("full bright", increment_controls, ::set_full_bright, getdvarint("full_bright"), 0, 1, 1);
         self add_increment("jump height", increment_controls, ::set_jump_height, getdvarint("jump_height"), 40, 500, 5);
         self add_increment("weapon spread", increment_controls, ::set_weapon_spread, getdvarfloat("perk_weapSpreadMultiplier"), 0, 0.65, 0.05);
         self add_increment("reload time", increment_controls, ::set_reload_time, getdvarfloat("perk_weapReloadMultiplier"), 0.05, 1, 0.05);
@@ -321,6 +327,148 @@ player_index(menu, player)
     }
 }
 
+spawn_zombie(archetype) 
+{
+    team = "axis";
+
+    if(archetype == "zombie_grey") 
+    {
+        weapon = "iw7_zapper_grey";
+    } 
+    else if(archetype == "the_hoff" || archetype == "pamgrier" || archetype == "elvira") 
+    {
+        weapon = "iw7_ake_zmr+akepap2";
+        team = "allies";
+    } 
+    else 
+    {
+        weapon = undefined;
+    }
+
+    scripts\mp\mp_agent::spawnnewagent(archetype, team, self bullet_trace(), self.angles, weapon);
+}
+
+set_round(value)
+{
+    level.wave_num = value;
+}
+
+hide_ui() 
+{
+    if (!isdefined(self.hide_ui)) self.hide_ui = false;
+    self.hide_ui = !self.hide_ui;
+
+    setdvar("cg_draw2d", !self.hide_ui);
+}
+
+toggle_frozen_box()
+{
+    if (!isdefined(self.frozen_box)) self.frozen_box = false;
+
+    if (!self.frozen_box)
+    {
+        self iprintln("frozen box ^2on");
+        self thread frozen_box_loop();
+    }
+    else if (self.frozen_box)
+    {
+        self iprintln("frozen box ^1off");
+        level.var_B162  = 1;
+        level.var_13D01 = 4;
+        self notify("stop_frozen_box");
+    }
+
+    self.frozen_box = !self.frozen_box;
+}
+
+frozen_box_loop()
+{
+    self endon("death");
+    self endon("disconnect");
+    self endon("stop_frozen_box");
+
+    for(;;)
+    {
+        level.var_13D01 = 0;
+        wait 1;
+    }
+}
+
+set_max_bank()
+{
+    level.atm_amount_deposited = 2147483647; 
+}
+
+demigod()
+{
+    self endon("disconnect");
+    level endon("game_ended");
+
+    for(;;)
+    {
+        self.health = self.maxhealth;
+        wait 0.05;
+    }
+}
+
+toggle_third_person()
+{
+    if (!isdefined(self.third_person)) self.third_person = false;
+
+    if (!self.third_person)
+    {
+        self iprintln("third person ^2on");
+        setdvar("camera_thirdPerson", 1);
+        scripts\cp\utility::setthirdpersondof(1);
+    }
+    else if (self.third_person)
+    {
+        self iprintln("third person ^1off");
+        setdvar("camera_thirdPerson", 0);
+        scripts\cp\utility::setthirdpersondof(0);
+    }
+
+    self.third_person = !self.third_person;
+}
+
+toggle_exo_movement()
+{
+    if (!isdefined(self.exo_movement)) self.exo_movement = false;
+
+    if (!self.exo_movement)
+    {
+        self iprintln("exo movement ^2on");
+        self allowdoublejump(1);
+        self allowwallrun(1);
+        self allowdodge(1);
+        self allowMantle(1);
+        self.disabledMantle = 0;
+    }
+    else if (self.exo_movement)
+    {
+        self iprintln("exo movement ^1off");
+        self allowdoublejump(0);
+        self allowwallrun(0);
+        self allowdodge(0);
+        self allowMantle(0);
+        self.disabledMantle = 1;
+    }
+
+    self.exo_movement = !self.exo_movement;
+}
+
+self_revive_loop() 
+{
+    self endon("disconnect");
+    level endon("game_ended");
+
+    for(;;) 
+    {
+        self.self_revive = 1;
+        wait 5;
+    }
+}
+
 // aimbot stuff
 toggle_aimbot()
 {
@@ -350,18 +498,16 @@ aimbot()
     {
         self waittill("weapon_fired");
 
-        zombies = scripts\cp\cp_agent_utils::getaliveagentsofteam("axis");
-
-        foreach(zombie in zombies) 
+        foreach(zombie in get_zombies()) 
         {
-            if (is_true(self.aimbot_weapon) && self getcurrentweapon() == self.aimbot_weapon)
+            if (self getcurrentweapon() == self.aimbot_weapon)
             {
                 trace = self bullet_trace();
                 if(distance(zombie.origin, trace) < self.aimbot_range) 
                 {
                     // so we have to do a dodamage call here because callbackplayerdamage cries for some reason
                     // i really need to find the red hitmarker feedback idk what the shader is lol
-                    if(is_true(self.aimbot_delay) && self.aimbot_delay > 0)
+                    if(self.aimbot_delay != 0)
                         wait (self.aimbot_delay);
 
                     zombie dodamage(500, zombie.origin, self, self, "MOD_TRIGGER_HURT", self getcurrentweapon());
@@ -436,6 +582,11 @@ set_empty_reload_time(value)
     setdvar("perk_weapReloadMultiplierEmpty", value);
 }
 
+set_full_bright(value)
+{
+    setdvar("r_fullbright", value);
+}
+
 give_xp(xp) // xp popup
 {
     self thread scripts\cp\cp_persistence::give_player_xp(xp, 1);
@@ -490,10 +641,9 @@ freeze_all_zombies()
         self iprintln("zombies ^2frozen");
         self.frozen_zombies = true;
 
-        zombies = scripts\cp\cp_agent_utils::getaliveagentsofteam("axis");
-        foreach(zombie in zombies)
+        foreach(zombie in get_zombies())
         {
-            zombie.saved_origin = zombie.origin;
+            zombie freezecontrols(true);
         }
     } 
     else
@@ -501,32 +651,10 @@ freeze_all_zombies()
         self iprintln("zombies ^1unfrozen");
         self.frozen_zombies = false;
 
-        zombies = scripts\cp\cp_agent_utils::getaliveagentsofteam("axis");
-        foreach(zombie in zombies)
+        foreach(zombie in get_zombies())
         {
-            zombie.saved_origin = undefined;
+            zombie freezecontrols(false);
         }
-    }
-}
-
-frozen_zombies_loop()
-{
-    self endon("disconnect");
-    level endon("game_ended");
-
-    for(;;)
-    {
-        zombies = scripts\cp\cp_agent_utils::getaliveagentsofteam("axis");
-
-        if (is_true(self.frozen_zombies))
-        {
-            foreach(zombie in zombies)
-            {
-                zombie setorigin(zombie.saved_origin);
-            }
-        }
-
-        wait 0.05;
     }
 }
 
@@ -542,19 +670,6 @@ zombies_ignore_me()
         self iprintln("zombies ignore you ^1off");
         self.ignoreme = false;
     }
-}
-
-invulnerability()
-{
-	self endon("disconnect");
-	level endon("game_ended");
-
-	for(;;)
-	{
-        self.health = 999;
-        self.maxhealth = 999;
-        wait 0.05;
-	}
 }
 
 g_weapon(i)
@@ -755,7 +870,7 @@ get_perk_display_name(perk)
         case "perk_machine_smack":
             return "Slappy Taffy";  
         case "perk_machine_deadeye":
-            return "Deadeye Sign";  
+            return "Deadeye Dewdrops";  
         case "perk_machine_change":
             return "Change Chews";  
         default:
@@ -2003,6 +2118,16 @@ is_true(variable)
     return 0;
 }
 
+get_zombies()
+{
+    return scripts\cp\cp_agent_utils::getaliveagentsofteam("axis");
+}
+
+get_map_name()
+{
+    level.mapname = getDvar("mapname");
+}
+
 // have to use this because ActionSlotButtonOnePressed etc does not exist!
 button_monitor(button) 
 {
@@ -2062,9 +2187,9 @@ check_weapon_class()
     }
 }
 
-add_points(value)
+add_points(value) 
 {
-    level._id_10DA7 = value;
+    self setplayerdata("cp", "alienSession", "currency", value);
 }
 
 can_upgrade_hook(param_00,param_01)
