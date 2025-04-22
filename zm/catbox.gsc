@@ -9,6 +9,9 @@
 main()
 {
     // lets set dvars here just in case
+
+    level.is_debug = true;
+
     setdvar("sv_cheats", 1);
     setdvar("player_sprintUnlimited", 1);
     setdvar("timescale", 1);
@@ -16,7 +19,7 @@ main()
     setdvar("g_gravity", 785);
     setdvar("bg_bounces", 1);
 
-    replacefunc(scripts\cp\cp_weapon::can_upgrade, ::can_upgrade_hook);
+    // replacefunc(scripts\cp\cp_weapon::can_upgrade, ::can_upgrade_hook);
     replacefunc(scripts\cp\zombies\zombies_wor::launch_glasses, ::launch_glasses_hook);
 }
 
@@ -29,7 +32,14 @@ init()
         return;
     }
 
+    if (is_true(level.is_debug))
+    {
+        setdvar("developer_script", 1);
+    }
+
     level thread on_player_connect();
+
+    // get_map_name();
 
     level.damage_original = level.callbackplayerdamage;
     level.callbackplayerdamage = ::callback_playerdamage_stub; // no fall damage
@@ -51,6 +61,8 @@ on_event()
     self endon("disconnect");
     level endon("game_ended");
 
+    self.catbox = [];
+
     for(;;) 
     {
         event_name = self scripts\engine\utility::waittill_any_return("spawned_player", "player_downed", "death");
@@ -58,6 +70,12 @@ on_event()
         switch(event_name)
         {
         case "spawned_player":
+
+
+            if (!scripts\engine\utility::flag("introscreen_over"))
+            {
+                scripts\engine\utility::flag_wait("introscreen_over");
+            }
 
             self persistence_setup();
 
@@ -83,6 +101,7 @@ on_event()
             self thread self_revive_loop();
             self thread save_pos_bind();
             self thread load_pos_bind();
+            self thread nac_bind();
             self thread add_points(5000);
             self thread intro();
 
@@ -108,9 +127,10 @@ on_event()
             }
 
             self thread set_starter_perks();
-            self thread scripts\cp\zombies\direct_boss_fight::open_sesame();
 
-            // self playlocalsound("purchase_weapon"); // playlocalsound errors for some reason
+            // wait a lil to prevent errors
+            wait 3;
+            self thread scripts\cp\zombies\direct_boss_fight::open_sesame();
             break;
         case "death":
         default:
@@ -123,9 +143,11 @@ on_event()
 persistence_setup()
 {
     self.take_weapon = true;
-
     self.aimbot_range = 500;
     self.aimbot_delay = 0;
+    self.outline_color = 0;
+    self.weapon_one = "none";
+    self.weapon_two = "none";
 
     self unipers("bouncecount", "0");
 
@@ -156,18 +178,21 @@ render_menu_options()
         self add_option("perks", undefined, ::new_menu, "perks");
         self add_option("zombies", undefined, ::new_menu, "zombies");
         self add_option("aimbot", undefined, ::new_menu, "aimbot");
+        self add_option("teleports", undefined, ::new_menu, "teleports");
         self add_option("dvars", undefined, ::new_menu, "dvars");
+        self add_option("account", undefined, ::new_menu, "account");
         self add_option("clients", undefined, ::new_menu, "all players");
         break;
     case "settings":
         self add_menu("settings");
+        self add_option("nac bind", undefined, ::new_menu, "nac bind");
         self add_increment("add points", increment_controls, ::add_points, self getrankedplayerdata("cp", "alienSession", "currency"), 100, 100000, 100);
         self add_toggle("auto prone", undefined, ::do_auto_prone, self.auto_prone);
         self add_toggle("auto reload", undefined, ::do_auto_reload, self.auto_reload);
         self add_toggle("exo movement", undefined, ::toggle_exo_movement, self.exo_movement);
         self add_toggle("fake elevators", undefined, ::toggle_elevators, self.elevators);
         self add_toggle("gesture bind", undefined, ::toggle_gesture_bind, self.gesture_bind);
-        self add_toggle("hide ui", undefined, ::hide_ui, self.hide_ui);
+        self add_toggle("completely hide ui", undefined, ::hide_ui, self.hide_ui);
         self add_toggle("third person", undefined, ::toggle_third_person, self.third_person);
         self add_toggle("freeze box", undefined, ::toggle_frozen_box, self.frozen_box);
         self add_option("give sunglasses", undefined, ::launch_glasses_hook);
@@ -179,6 +204,8 @@ render_menu_options()
     case "weapons":
         self add_menu("weapons");
         self add_toggle("take weapon on give", undefined, ::toggle_take_weapon, self.take_weapon);
+        self add_toggle("infinite ammo", undefined, ::toggle_infinite_ammo, self.infinite_ammo);
+        self add_toggle("infinite equipment", undefined, ::toggle_infinite_equipment, self.infinite_equipment);
         self add_option("refill all weapons", undefined, ::refill_my_ammo);
         self add_option("snipers", undefined, ::new_menu, "snipers");
         self add_option("smg", undefined, ::new_menu, "smg");
@@ -201,10 +228,14 @@ render_menu_options()
     case "snipers":
         self add_menu("snipers");
         self add_option("tf-141 (irons)", undefined, ::g_weapon, "iw7_cheytacc_zm");
-        self add_option("tf-141", undefined, ::g_weapon, "iw7_cheytacc_zm+cheytacscope_camo");
+        self add_option("tf-141 (scoped)", undefined, ::g_weapon, "iw7_cheytacc_zm+cheytacscope_camo");
+        self add_option("widowmaker", undefined, ::g_weapon, "iw7_cheytac_zmr");
+        self add_option("trek-50", undefined, ::g_weapon, "iw7_ba50cal_zm");
+        self add_option("dmr-1", undefined, ::g_weapon, "iw7_m1_zm");
         self add_option("dmr-1 (scoped)", undefined, ::g_weapon, "iw7_m1_zm+m1scope_camo");
-        self add_option("ebr-800 (glitched)", undefined, ::g_weapon, "iw7_m8_zm");
-        self add_option("longbow (irons)", undefined, ::g_weapon, "iw7_kbs_zm");
+        self add_option("ebr-800", undefined, ::g_weapon, "iw7_m8_zm");
+        self add_option("kbs longbow (irons)", undefined, ::g_weapon, "iw7_kbs_zm");
+        self add_option("proteus", undefined, ::g_weapon, "iw7_longshot_zm+longshotlscope_zm");
         break;
     case "smg":
         self add_menu("smg");
@@ -213,15 +244,20 @@ render_menu_options()
         self add_option("ripper", undefined, ::g_weapon, "iw7_ripper_zm");
         self add_option("fhr-40", undefined, ::g_weapon, "iw7_fhr_zm");
         self add_option("ump-45", undefined, ::g_weapon, "iw7_ump45c_zm");
+        self add_option("raijin-emx", undefined, ::g_weapon, "iw7_tacburst_zm+gltacburst");
+        self add_option("trencher", undefined, ::g_weapon, "iw7_mp28_zm");
+        self add_option("vpr", undefined, ::g_weapon, "iw7_crdb_zm");
         break;
     case "ar":
         self add_menu("ar");
         self add_option("kbar-32", undefined, ::g_weapon, "iw7_ar57_zm");
+        self add_option("r3k", undefined, ::g_weapon, "iw7_sdfar_zm");
         self add_option("volk", undefined, ::g_weapon, "iw7_ake_zm");
         self add_option("r-vn", undefined, ::g_weapon, "iw7_rvn_zm");
-        self add_option("type-2", undefined, ::g_weapon, "iw7_fmg_zm");
+        self add_option("type-2", undefined, ::g_weapon, "iw7_fmg_zm+akimbofmg_zm");
         self add_option("x-eon", undefined, ::g_weapon, "iw7_vr_zm");
-        self add_option("nv4 (glitched)", undefined, ::g_weapon, "iw7_m4_zm");
+        self add_option("nv4", undefined, ::g_weapon, "iw7_m4_zm");
+        self add_option("g-rail", undefined, ::g_weapon, "iw7_gauss_zm");
         break;
     case "shotguns":
         self add_menu("shotguns");
@@ -231,20 +267,26 @@ render_menu_options()
         self add_option("reaver", undefined, ::g_weapon, "iw7_devastator_zm");
         self add_option("banshee", undefined, ::g_weapon, "iw7_sonic_zm");
         self add_option("banshee (^:2^7)", undefined, ::g_weapon, "iw7_sonic_zmr");
-        self add_option("dcm-8", undefined, ::g_weapon, "iw7_sdfshotty_zm");
+        self add_option("dcm-8", undefined, ::g_weapon, "iw7_sdfshotty_zm+sdfshottyscope_camo");
         break;
     case "pistols":
         self add_menu("pistols");
+        if (getdvar("mapname") == "cp_zmb")
+        {
+            self add_option("face melter", undefined, ::g_weapon, "iw7_facemelter_zm");
+            self add_option("head cutter", undefined, ::g_weapon, "iw7_headcutter_zm");
+            self add_option("dischord", undefined, ::g_weapon, "iw7_dischord_zm");
+            self add_option("nx 2.0", undefined, ::g_weapon, "iw7_spaceland_wmd");
+            self add_option("shredder", undefined, ::g_weapon, "iw7_shredder_zm");
+        }
+
         self add_option("g18", undefined, ::g_weapon, "iw7_g18_zm");
-        self add_option("face melter", undefined, ::g_weapon, "iw7_facemelter_zm");
-        self add_option("dischord", undefined, ::g_weapon, "iw7_facemelter_zm");
-        self add_option("shredder", undefined, ::g_weapon, "iw7_shredder_zm");
         self add_option("hornet", undefined, ::g_weapon, "iw7_g18c_zm");
         self add_option("hailstorm", undefined, ::g_weapon, "iw7_revolver_zm");
         self add_option("emc", undefined, ::g_weapon, "iw7_emc_zm");
         self add_option("oni", undefined, ::g_weapon, "iw7_nrg_zm");
         self add_option("stallion", undefined, ::g_weapon, "iw7_mag_zm");
-        self add_option("udm", undefined, ::g_weapon, "iw7_udm45_zm");
+        self add_option("udm", undefined, ::g_weapon, "iw7_udm45_zm+udm45scope");
         break;
     case "lmg":
         self add_menu("lmg");
@@ -252,13 +294,102 @@ render_menu_options()
         self add_option("mauler", undefined, ::g_weapon, "iw7_mauler_zm");
         self add_option("titan", undefined, ::g_weapon, "iw7_lmg03_zm");
         self add_option("atlas", undefined, ::g_weapon, "iw7_unsalmg_zm");
+        self add_option("auger", undefined, ::g_weapon, "iw7_minilmg_zm");
+        break;
+    case "others":
+        self add_menu("others");
+        self add_option("c4", undefined, ::g_weapon, "c4_zm");
+        self add_option("willard's dagger", undefined, ::g_weapon, "iw7_wylerdagger_zm");
+
+        if (getdvar("mapname") == "cp_zmb")
+        {
+            self add_option("forge freeze", undefined, ::g_weapon, "iw7_forgefreeze_zm+forgefreezealtfire");
+        }
+        self add_option("eraser", undefined, ::g_weapon, "iw7_atomizer_mp");
+        self add_option("ballista em3", undefined, ::g_weapon, "iw7_penetrationrail_mp+penetrationrailscope");
+        self add_option("steel dragon", undefined, ::g_weapon, "iw7_steeldragon_mp");
+        self add_option("claw", undefined, ::g_weapon, "iw7_claw_mp");
+        self add_option("gravity vortex gun", undefined, ::g_weapon, "iw7_blackholegun_mp+blackholegunscope");
+        self add_option("howitzer", undefined, ::g_weapon, "iw7_glprox_zm");
+        self add_option("p-law", undefined, ::g_weapon, "iw7_chargeshot_zm");
+        self add_option("golden axe", undefined, ::g_weapon, "iw7_axe_zm_pap2");
         break;
     case "zombies":
         self add_menu("zombies");
-        self add_increment("set round", increment_controls, ::set_round, level.wave_num, 1, 255, 1);
+        self add_option("spawn zombies", undefined, ::new_menu, "spawn zombies");
         self add_option("teleport all zombies", undefined, ::teleport_zombies);
         self add_option("freeze all zombies", undefined, ::freeze_all_zombies);
         self add_toggle("zombies ignore you", undefined, ::zombies_ignore_me, self.ignoreme);
+        self add_toggle("zombie outlines", undefined, ::outline_zombies, self.zombie_outline);
+        self add_increment("outline color", increment_controls, ::set_outline_color, self.outline_color, 0, 5, 1, true, "outline");
+        break;
+    case "spawn zombies":
+        self add_menu("spawn zombies");
+        map = getdvar("mapname");
+        for(i = 0; i < self.catbox["zombies"][map][0].size; i++) 
+        {
+            self add_option("spawn " + self.catbox["zombies"][map][1][i], undefined, ::spawn_zombie, self.catbox["zombies"][map][0][i]);
+        }
+        break;
+    case "teleports":
+        self add_menu("teleports");
+        map = getdvar("mapname");
+        for(i = 0; i < self.catbox["main teleports"][map][0].size; i++) 
+        {
+            self add_option(self.catbox["main teleports"][map][0][i], undefined, ::set_position, self.catbox["main teleports"][map][1][i], (0, self.catbox["main teleports"][map][2][i], 0));
+        }
+
+        if (isdefined(self.catbox["map setup teleports"][map][0])) 
+        {
+            self add_option("map setup teleports", undefined, ::new_menu, "map setup teleports");
+        }
+
+        if (isdefined(self.catbox["mystery wheel teleports"][map][0])) 
+        {
+            self add_option("mystery wheel teleports", undefined, ::new_menu, "mystery wheel teleports");
+        }
+
+        if (isdefined(self.catbox["main quest teleports"][map][0])) 
+        {
+            self add_option("main quest teleports", undefined, ::new_menu, "main quest teleports");
+        }
+
+        if (isdefined(self.catbox["extra teleports"][map][0])) 
+        {
+            self add_option("extra teleports", undefined, ::new_menu, "extra teleports");
+        }
+        break;
+    case "map setup teleports":
+        self add_menu("map setup teleports");
+        map = getdvar("mapname");
+        for(i = 0; i < self.catbox["map setup teleports"][map][0].size; i++) 
+        {
+            self add_option(self.catbox["map setup teleports"][map][0][i], undefined, ::set_position, self.catbox["map setup teleports"][map][1][i], (0, self.catbox["map setup teleports"][map][2][i], 0));
+        }
+        break;
+    case "mystery wheel teleports":
+        self add_menu("mystery wheel teleports");
+        map = getdvar("mapname");
+        for(i = 0; i < self.catbox["mystery wheel teleports"][map][0].size; i++) 
+        {
+            self add_option(self.catbox["mystery wheel teleports"][map][0][i], undefined, ::set_position, self.catbox["mystery wheel teleports"][map][1][i], (0, self.catbox["mystery wheel teleports"][map][2][i], 0));
+        }
+        break;
+    case "main quest teleports":
+        self add_menu("main quest teleports");
+        map = getdvar("mapname");
+        for(i = 0; i < self.catbox["main quest teleports"][map][0].size; i++) 
+        {
+            self add_option(self.catbox["main quest teleports"][map][0][i], undefined, ::set_position, self.catbox["main quest teleports"][map][1][i], (0, self.catbox["main quest teleports"][map][2][i], 0));
+        }
+        break;
+    case "extra teleports":
+        self add_menu("extra teleports");
+        map = getdvar("mapname");
+        for(i = 0; i < self.catbox["extra teleports"][map][0].size; i++) 
+        {
+            self add_option(self.catbox["extra teleports"][map][0][i], undefined, ::set_position, self.catbox["extra teleports"][map][1][i], (0, self.catbox["extra teleports"][map][2][i], 0));
+        }
         break;
     case "aimbot":
         self add_menu("aimbot");
@@ -281,14 +412,20 @@ render_menu_options()
         self add_increment("empty reload time", increment_controls, ::set_empty_reload_time, getdvarfloat("perk_weapReloadMultiplierEmpty"), 0.05, 1, 0.05);
         self add_increment("unlimited sprint", increment_controls, ::set_unlimited_sprint, getdvarint("player_sprintUnlimited"), 0, 1, 1);
         break;
-    case "others":
-        self add_menu("others");
-        self add_option("c4", undefined, ::g_weapon, "c4_zm");
-        self add_option("willard's dagger", undefined, ::g_weapon, "iw7_wylerdagger_zm");
-        self add_option("forge freeze", undefined, ::g_weapon, "iw7_forgefreeze_zm");
-        self add_option("howitzer", undefined, ::g_weapon, "iw7_glprox_zm");
-        self add_option("p-law", undefined, ::g_weapon, "iw7_chargeshot_zm");
-        self add_option("golden axe", undefined, ::g_weapon, "iw7_axe_zm_pap2");
+    case "account":
+        self add_menu("account");
+        self add_increment("change prestige", increment_controls, ::set_prestige, self getrankedplayerdata("cp", "progression", "playerLevel", "prestige"), 0, 20, 1);
+        self add_increment("change level", increment_controls, ::set_rank, self getrankedplayerdata("cp", "progression", "playerLevel", "xp"), 1, 999, 1);
+        self add_option("max out all weapons", undefined, ::set_max_weapons);
+        self add_option("complete all challenges", undefined, ::complete_challenges);
+        self add_option("complete contracts", undefined, ::complete_active_contracts);
+        self add_option("give soul keys", undefined, ::unlock_soul_keys);
+        self add_toggle("temporary director's cut", undefined, ::temp_directors_cut, self.temp_directors_cut);
+        break;
+    case "nac bind":
+        self add_menu("nac bind");
+        self add_option("set first weapon", undefined, ::set_first_weapon);
+        self add_option("set second weapon", undefined, ::set_second_weapon);
         break;
     case "all players":
         self add_menu(menu);
@@ -327,15 +464,330 @@ player_index(menu, player)
     }
 }
 
+toggle_infinite_ammo()
+{
+    self.infinite_ammo = !toggle(self.infinite_ammo);
+
+    if (!self.infinite_ammo)
+    {
+        self thread infinite_ammo();
+        self iprintln("infinite ammo ^2on");
+    }
+    else
+    {
+        self notify("stop_infinite_ammo");
+        self iprintln("infinite ammo ^1off");
+    }
+}
+
+toggle_infinite_equipment()
+{
+    self.infinite_equipment = !toggle(self.infinite_equipment);
+
+    if (!self.infinite_equipment)
+    {
+        self thread infinite_equipment();
+        self iprintln("infinite equipment ^2on");
+    }
+    else
+    {
+        self notify("stop_infinite_equipment");
+        self iprintln("infinite equipment ^1off");
+    }
+}
+
+infinite_ammo()
+{
+    self endon("disconnect");
+    level endon("game_ended");
+
+    for(;;)
+    {
+        self waittill("reload");
+        self setweaponammostock(self getcurrentweapon(), 9999);
+    }
+}
+
+infinite_equipment()
+{
+    self endon("disconnect");
+    level endon("game_ended");
+
+    for(;;)
+    {
+        self waittill("grenade_fire", grenade, name);
+        waittillframeend;
+        power = scripts\mp\powers::_id_D737(name);
+        self scripts\mp\powers::_id_D74C(power);
+        // power = scripts\cp\powers\coop_powers::restore_powers(name); 
+    }
+}
+
+set_first_weapon()
+{
+    self.weapon_one = self getcurrentweapon();
+    self iprintln("first weapon: ^:" + self.weapon_one);
+}
+
+set_second_weapon()
+{
+    self.weapon_two = self getcurrentweapon();
+    self iprintln("second weapon: ^:" + self.weapon_two);
+}
+
+nac_bind()
+{
+    self endon("disconnect");
+    level endon("game_ended");
+
+    for(;;)
+    {
+        self waittill("+actionslot 1");
+
+        if (self in_menu())
+            continue;
+
+        if (self.weapon_one == "none" || self.weapon_two == "none")
+        {
+            self iprintlnbold("select ^:both weapons^7 in the menu!");
+            continue;
+        }
+
+        if (self getcurrentweapon() == self.weapon_one)
+        {
+            self nacto(self.weapon_two);
+        }
+
+        if (self getcurrentweapon() == self.weapon_two)
+        {
+            self nacto(self.weapon_one);
+        }
+    }
+}
+
+take_weapon(weapon) 
+{
+    if (!isdefined(self.givetake_weapons)) 
+    {
+        self.givetake_weapons = [];
+    }
+
+    self.givetake_weapons[weapon] = spawnstruct();
+    self.givetake_weapons[weapon].stock = self getweaponammostock(weapon);
+    self.givetake_weapons[weapon].clip = [];
+    self.givetake_weapons[weapon].clip[0] = self getweaponammoclip(weapon, "right");
+    self.givetake_weapons[weapon].clip[1] = self getweaponammoclip(weapon, "left");
+    self takeweapon(weapon);
+}
+
+give_weapon(weapon) 
+{
+    self giveweapon(weapon);
+
+    if (isdefined(self.givetake_weapons) && isdefined(self.givetake_weapons[weapon])) 
+    {
+        self setweaponammostock(weapon, self.givetake_weapons[weapon].stock);
+        self setweaponammoclip(weapon, self.givetake_weapons[weapon].clip[0], "right");
+        self setweaponammoclip(weapon, self.givetake_weapons[weapon].clip[1], "left");
+    }
+}
+
+nacto(weapon) 
+{
+    current = self getcurrentweapon();
+    self take_weapon(current);
+
+    if (!self hasweapon(weapon)) 
+    {
+        self giveweapon(weapon);
+    }
+
+    self switchtoweapon(weapon);
+    wait 0.1;
+    self give_weapon(current);
+}
+
+set_prestige(value) 
+{
+    self setplayerdata("cp", "progression", "playerLevel", "prestige", value);
+}
+
+set_rank(value)
+{
+    value--;
+    self setplayerdata("cp", "progression", "playerLevel", "xp", int(tablelookup("cp/zombies/rankTable.csv", 0, value, (value == int(tablelookup("cp/zombies/rankTable.csv", 0, "maxrank", 1))) ? 7 : 2)));
+}
+
+set_max_weapons()
+{
+    for(x = 1; x < 62; x++) 
+    {
+        weapon = TableLookup("mp/statstable.csv", 0, x, 4);
+
+        if (!isdefined(weapon) || weapon == "") 
+        {
+            continue;
+        }
+
+        self setplayerdata("common", "sharedProgression", "weaponLevel", weapon, "cpXP", 54300);
+        self setplayerdata("common", "sharedProgression", "weaponLevel", weapon, "prestige", 3);
+
+        self iprintln("set ^:" + weapon + "^7 to max");
+
+        wait 0.175;
+    }
+}
+
+complete_challenges()
+{
+    merits = getarraykeys(level.meritinfo);
+
+    if (!isdefined(merits) || !merits.size) {
+        return;
+    }
+
+    foreach(merit in merits) 
+    {
+        meritInfo = level.meritinfo[merit]["targetval"];
+        meritState = self getrankedplayerdata("cp", "meritState", merit);
+        meritProgress = self getrankedplayerdata("cp", "meritProgress", merit);
+
+        if (!isdefined(meritInfo)) 
+        {
+            continue;
+        }
+
+        if (meritState < meritInfo.size || meritProgress < meritInfo[(meritInfo.size - 1)]) 
+        {
+            if (meritProgress < meritInfo[(meritInfo.size - 1)]) 
+            {
+                self setplayerdata("cp", "meritProgress", merit, meritInfo[(meritInfo.size - 1)]);
+                self iprintln("completed challenge " + merit);
+            }
+
+            if (meritState < meritInfo.size) 
+            {
+                self setplayerdata("cp", "meritState", merit, meritInfo.size);
+                self iprintln("completed challenge " + merit);
+            }
+
+            wait 0.175;
+        }
+    }
+}
+
+complete_active_contracts()
+{
+    contracts = getarraykeys(self.contracts);
+
+    if (!isdefined(contracts) || !contracts.size) 
+    {
+        return;
+    }
+
+    foreach(contract in contracts) 
+    {
+        target = self.contracts[contract].target;
+        progress = self getrankedplayerdata("cp", "contracts", "challenges", contract, "progress");
+
+        if (!isdefined(progress) || !isdefined(target) || progress >= target) 
+        {
+            continue;
+        }
+
+        self setplayerdata("cp", "contracts", "challenges", contract, "progress", target);
+        self setplayerdata("cp", "contracts", "challenges", contract, "completed", 1);
+
+        wait 0.01;
+    }
+}
+
+unlock_soul_keys() 
+{
+    self setplayerdata("cp", "haveSoulKeys", "soul_key_1", 1);
+    self setplayerdata("cp", "haveSoulKeys", "soul_key_2", 1);
+    self setplayerdata("cp", "haveSoulKeys", "soul_key_3", 1);
+    self setplayerdata("cp", "haveSoulKeys", "soul_key_4", 1);
+    self setplayerdata("cp", "haveSoulKeys", "soul_key_5", 1);
+
+    self iprintln("soul keys ^2given");
+    wait 2.5;
+    self iprintln("active the jar to unlock director's cut");
+
+    self set_position((-10250, 875, -1630), (0, 90, 0));
+}
+
+temp_directors_cut() 
+{
+    self.temp_directors_cut = !toggle(self.temp_directors_cut);
+
+    if (self.temp_directors_cut) 
+    {
+        self iprintln("temp director's cut ^2unlocked");
+        self setplayerdata("cp", "dc", 1);
+    } 
+    else 
+    {
+        self iprintln("temp director's cut ^1locked");
+        self setplayerdata("cp", "dc", 0);
+    }
+}
+
+outline_zombies()
+{
+    self.zombie_outline = !toggle(self.zombie_outline);
+
+    if (self.zombie_outline)
+    {
+        self iprintln("zombie outlines ^2on");
+        self thread zombie_outline_loop();
+    }
+    else
+    {
+        self iprintln("zombie outlines ^1off");
+        self notify("stop_outlining_zombies");
+        
+        foreach(zombie in get_zombies())
+        {
+            scripts\cp\cp_outline::disable_outline_for_players(zombie, get_players());
+        }
+    }
+}
+
+zombie_outline_loop()
+{
+    self endon("stop_outlining_zombies");
+    level endon("game_ended");
+
+    if (!isdefined(self.outline_color))
+    {
+        self.outline_color = 0;
+    }
+
+    for(;;)
+    {
+        foreach(zombie in get_zombies())
+        {
+            scripts\cp\cp_outline::enable_outline_for_players(zombie, get_players(), self.outline_color, 0, 0, "high");
+        }
+        wait 0.1;
+    }
+}
+
+set_outline_color(value)
+{
+    self.outline_color = value;
+}
+
 spawn_zombie(archetype) 
 {
     team = "axis";
 
-    if(archetype == "zombie_grey") 
+    if (archetype == "zombie_grey") 
     {
         weapon = "iw7_zapper_grey";
     } 
-    else if(archetype == "the_hoff" || archetype == "pamgrier" || archetype == "elvira") 
+    else if (archetype == "the_hoff" || archetype == "pamgrier" || archetype == "elvira") 
     {
         weapon = "iw7_ake_zmr+akepap2";
         team = "allies";
@@ -355,9 +807,7 @@ set_round(value)
 
 hide_ui() 
 {
-    if (!isdefined(self.hide_ui)) self.hide_ui = false;
-    self.hide_ui = !self.hide_ui;
-
+    self.hide_ui = !toggle(self.hide_ui);
     setdvar("cg_draw2d", !self.hide_ui);
 }
 
@@ -503,11 +953,11 @@ aimbot()
             if (self getcurrentweapon() == self.aimbot_weapon)
             {
                 trace = self bullet_trace();
-                if(distance(zombie.origin, trace) < self.aimbot_range) 
+                if (distance(zombie.origin, trace) < self.aimbot_range) 
                 {
                     // so we have to do a dodamage call here because callbackplayerdamage cries for some reason
                     // i really need to find the red hitmarker feedback idk what the shader is lol
-                    if(self.aimbot_delay != 0)
+                    if (self.aimbot_delay != 0)
                         wait (self.aimbot_delay);
 
                     zombie dodamage(500, zombie.origin, self, self, "MOD_TRIGGER_HURT", self getcurrentweapon());
@@ -697,7 +1147,7 @@ save_position()
 
 load_position()
 {
-    if (!isDefined(self.saved_origin))
+    if (!isdefined(self.saved_origin))
         return;
 
     self SetOrigin(self.saved_origin);
@@ -916,11 +1366,6 @@ toggle_gesture_bind()
     self.gesture_bind = !self.gesture_bind;
 }
 
-play_gesture(gesture)
-{
-    self thread scripts\cp\zombies\zombies_perk_machines::play_perk_gesture(gesture);
-}
-
 gesture_bind()
 {
     self endon("disconnect");
@@ -933,6 +1378,14 @@ gesture_bind()
         gestures = randomize("perk_machine_boom,perk_machine_revive.perk_machine_fwoosh,perk_machine_run,perk_machine_deadeye,perk_machine_change,perk_machine_rat_a_tat,perk_machine_zap,perk_machine_tough,perk_machine_flash,perk_machine_smack,perk_machine_more");
         self thread play_gesture(gestures);
     }
+}
+
+play_gesture(gesture)
+{
+    if (is_true(self.playingperkgesture))
+        return;
+
+    self thread scripts\cp\zombies\zombies_perk_machines::play_perk_gesture(gesture);
 }
 
 refill_my_ammo()
@@ -1159,12 +1612,13 @@ initial_precache()
     foreach(shader in list("ui_arrow_right,ui_scrollbar_arrow_right,ui_scrollbar_arrow_left"))
         precacheshader(shader);
 
-    foreach(model in list("collision_clip_64x64x10,mp_flag_green,mp_flag_red,script_model"))
+    foreach(model in list("model"))
         precachemodel(shader);
 }
 
 initial_variable()
 {
+    // menu variables
     self.font            = "objective";
     self.font_scale      = 0.85;
     self.option_limit    = 7;
@@ -1186,6 +1640,140 @@ initial_variable()
     self.cursor   = [];
     self.previous = [];
 
+
+    // game variables
+
+    // zombie list
+    // spaceland
+    self.catbox["zombies"]["cp_zmb"][0] = ["generic_zombie", "zombie_clown", "zombie_cop", "zombie_brute", "zombie_ghost", "the_hoff"];
+    self.catbox["zombies"]["cp_zmb"][1] = ["normal zombie", "clown", "cop", "brute", "ghost", "david hasselhoff"];
+
+    // rave in the redwoods
+    self.catbox["zombies"]["cp_rave"][0] = ["generic_zombie", "lumberjack", "zombie_sasquatch", "slasher", "superslasher"];
+    self.catbox["zombies"]["cp_rave"][1] = ["normal zombie", "lumberjack", "sasquatch", "slasher", "super slasher"];
+
+    // shaolin shuffle
+    self.catbox["zombies"]["cp_disco"][0] = ["generic_zombie", "karatemaster", "skater", "ratking", "pamgrier"];
+    self.catbox["zombies"]["cp_disco"][1] = ["normal zombie", "karate zombie", "skater", "rat king", "pam grier"];
+
+    // attack of the radioactive thing
+    self.catbox["zombies"]["cp_town"][0] = ["generic_zombie", "crab_mini", "crab_brute", "crab_boss", "elvira"];
+    self.catbox["zombies"]["cp_town"][1] = ["normal zombie", "crog", "crog brute", "crog boss", "elvira"];
+
+    // beast from beyond
+    self.catbox["zombies"]["cp_final"][0] = ["generic_zombie", "alien_goon", "alien_phantom", "alien_rhino", "dlc4_boss"];
+    self.catbox["zombies"]["cp_final"][1] = ["normal zombie", "cryptid", "phantom", "rhino", "mephistopheles"];
+
+    // teleport list
+    
+    // spaceland teleport names
+    self.catbox["main teleports"]["cp_zmb"][0] = ["pap room", "spawn", "main portal", "afterlife arcade"];
+    self.catbox["map setup teleports"]["cp_zmb"][0] = ["spawn power", "journey power", "kepler power", "polar peak power", "arcade power", "journey teleporter", "kepler teleporter", "polar peak teleporter", "arcade teleporter"];
+    self.catbox["mystery wheel teleports"]["cp_zmb"][0] = ["journey 1", "journey 2", "journey 3", "astrocade", "polar peak", "kepler 1", "kepler 2", "kepler 3"];
+    self.catbox["main quest teleports"]["cp_zmb"][0] = ["calculator 1", "calculator 2", "calculator 3", "boom box 1", "boom box 2", "boom box 3", "umbrella 1", "umbrella 2", "umbrella 3", "dj booth 1", "dj booth 2", "dj booth 3"];
+    self.catbox["extra teleports"]["cp_zmb"][0] = ["n31l's head", "n31l auxiliary battery 1", "n31l auxiliary battery 2", "n31l auxiliary battery 3", "n31l auxiliary battery 4", "n31l auxiliary battery 5", "n31l auxiliary battery 6", "n31l floppy disk 1", "n31l floppy disk 2", "n31l floppy disk 3", "n31l floppy disk 4"];
+
+    // spaceland teleport origins
+    self.catbox["main teleports"]["cp_zmb"][1] = [(-10245, 740, -1630), (465, 3680, 0), (650, 970, 0), (-9885, -70, -1795)];
+    self.catbox["map setup teleports"]["cp_zmb"][1] = [(1075, 3720, 0), (4695, 1250, 115), (-1365, -65, 380), (-695, -2795, 560), (2390, -1825, 115), (3640, 1165, 55), (-2150, -35, 225), (-1490, -2650, 360), (2285, -1615, 115)];
+    self.catbox["mystery wheel teleports"]["cp_zmb"][1] = [(1470, 1045, 0), (4065, 2135, 55), (3690, 420, 55), (2575, -865, 240), (955, -2260, 440), (-1950, 1830, 365), (-1900, -530, 380), (-845, -1492, 360)];
+    self.catbox["main quest teleports"]["cp_zmb"][1] = [(540, 1060, 0), (-2520, 805, 365), (2960, -850, 240), (595, 2125, -65), (-1415, -175, 380), (1375, -590, -195), (155, -505, 0), (-1890, -3040, 360), (3640, 2335, 115), (-1000, 1495, 225), (-2710, -2480, 360), (2926, 1305, 0)];
+    self.catbox["extra teleports"]["cp_zmb"][1] = [(475, -265, 0), (-1800, -2825, 360), (-535, -3265, 390), (-757, -2415, 560), (-2775, 1565, 365), (-3045, 730, 365), (-1230, 1625, 225), (2425, -106, -196), (2495, -295, -196), (1920, -635, -196), (100, -1115, -252)];
+
+    // spaceland teleport angles
+    self.catbox["main teleports"]["cp_zmb"][2] = [90, -90, -90];
+    self.catbox["map setup teleports"]["cp_zmb"][2] = [-90, 0, -90, 90, 180, 0, -45, 20, -90];
+    self.catbox["mystery wheel teleports"]["cp_zmb"][2] = [180, 90, 0, -90, 0, -45, -90, 0];
+    self.catbox["main quest teleports"]["cp_zmb"][2] = [0, 0, 90, 45, 0, 90, 160, 90, -90, 0, -90, 0];
+    self.catbox["extra teleports"]["cp_zmb"][2] = [-90, 180, -90, 0, 0, 0, 90, 50, 60, -100, 135];
+
+    // rave teleport names
+    self.catbox["main teleports"]["zmb_rave"][0] = ["spawn", "pap room", "ritual circle", "main portal"];
+    self.catbox["map setup teleports"]["zmb_rave"][0] = ["spawn power", "mess hall power", "lake power", "mine power"];
+    self.catbox["mystery wheel teleports"]["zmb_rave"][0] = ["mess hall", "lake", "mines", "cabins"];
+    self.catbox["main quest teleports"]["zmb_rave"][0] = ["film reel 1", "film reel 2", "film reel 3", "dj booth"];
+    self.catbox["extra teleports"]["zmb_rave"][0] = ["vhs tape", "kevin mask", "rave mask", "worm mask"];
+
+    // rave teleport origins
+    self.catbox["main teleports"]["zmb_rave"][1] = [(-750, 1085, 0), (-140, 1960, -90), (-1120, -490, 0), (-1585, -345, 0)];
+    self.catbox["map setup teleports"]["zmb_rave"][1] = [(465, 1075, 0), (2250, -825, 100), (-1775, -2375, 65), (-1075, 2300, -100)];
+    self.catbox["mystery wheel teleports"]["zmb_rave"][1] = [(2165, -1075, 100), (-1885, -2245, 65), (-1125, 2300, -100), (-2295, -205, 0)];
+    self.catbox["main quest teleports"]["zmb_rave"][1] = [(-150, 1925, -90), (-2285, -1480, 65), (-1075, 2345, -100), (-810, 160, 0)];
+    self.catbox["extra teleports"]["zmb_rave"][1] = [(1145, 280, 0), (-725, -240, 0), (-1345, -555, 0), (-280, -1260, 0)];
+
+    // rave teleport angles
+    self.catbox["main teleports"]["zmb_rave"][2] = [180, 180, -90, 90];
+    self.catbox["map setup teleports"]["zmb_rave"][2] = [180, -90, 90, -90];
+    self.catbox["mystery wheel teleports"]["zmb_rave"][2] = [90, 45, -90, 0];
+    self.catbox["main quest teleports"]["zmb_rave"][2] = [90, 180, -90, -90];
+    self.catbox["extra teleports"]["zmb_rave"][2] = [0, 90, 90, 90];
+
+    // disco teleport names
+    self.catbox["main teleports"]["zmb_disco"][0] = ["spawn", "pap room", "main portal"];
+    self.catbox["map setup teleports"]["zmb_disco"][0] = ["disco power", "roller rink power", "arcade power", "disco teleporter", "roller rink teleporter", "arcade teleporter"];
+    self.catbox["mystery wheel teleports"]["zmb_disco"][0] = ["arcade", "roller rink", "disco"];
+    self.catbox["main quest teleports"]["zmb_disco"][0] = ["mic stand", "boombox", "flyer", "dj booth"];
+    self.catbox["extra teleports"]["zmb_disco"][0] = ["pac-man part", "records", "guitar", "vip pass"];
+
+    // disco teleport origins
+    self.catbox["main teleports"]["zmb_disco"][1] = [(580, 780, 0), (-275, 2525, -70), (-2000, -280, 0)];
+    self.catbox["map setup teleports"]["zmb_disco"][1] = [(1885, 685, 0), (85, -1190, 0), (-2400, -380, 0), (1785, 110, 0), (-240, -1650, 0), (-2455, -780, 0)];
+    self.catbox["mystery wheel teleports"]["zmb_disco"][1] = [(-2775, -835, 0), (-100, -1580, 0), (1885, 160, 0)];
+    self.catbox["main quest teleports"]["zmb_disco"][1] = [(-370, 630, 0), (195, -320, 0), (-2025, -745, 0), (-1720, -480, 0)];
+    self.catbox["extra teleports"]["zmb_disco"][1] = [(-2440, -190, 0), (-1140, -265, 0), (-1495, 920, 0), (-220, -2035, 0)];
+
+    // disco teleport angles
+    self.catbox["main teleports"]["zmb_disco"][2] = [180, 180, -90];
+    self.catbox["map setup teleports"]["zmb_disco"][2] = [0, 0, 90, 180, 90, 90];
+    self.catbox["mystery wheel teleports"]["zmb_disco"][2] = [90, 180, 180];
+    self.catbox["main quest teleports"]["zmb_disco"][2] = [180, -90, 180, 90];
+    self.catbox["extra teleports"]["zmb_disco"][2] = [0, 180, -90, -90];
+
+    // town teleport names
+    self.catbox["main teleports"]["zmb_town"][0] = ["spawn", "pap room", "main portal"];
+    self.catbox["map setup teleports"]["zmb_town"][0] = ["police power", "dance club power", "diner power", "bowling power", "police teleporter", "dance club teleporter", "diner teleporter", "bowling teleporter"];
+    self.catbox["mystery wheel teleports"]["zmb_town"][0] = ["diner", "dance club", "bowling", "alley"];
+    self.catbox["main quest teleports"]["zmb_town"][0] = ["pack parts 1", "pack parts 2", "pack parts 3", "dj booth"];
+    self.catbox["extra teleports"]["zmb_town"][0] = ["alien fuse", "gold record", "cassette", "flyer"];
+
+    // town teleport origins
+    self.catbox["main teleports"]["zmb_town"][1] = [(-1385, 420, 0), (245, -490, -90), (-1830, 70, 0)];
+    self.catbox["map setup teleports"]["zmb_town"][1] = [(315, 740, 0), (2140, -1235, 0), (-1905, 1030, 0), (-2075, -1385, 0), (550, 1040, 0), (2375, -1700, 0), (-2265, 970, 0), (-2340, -1790, 0)];
+    self.catbox["mystery wheel teleports"]["zmb_town"][1] = [(-2100, 1310, 0), (2210, -1415, 0), (-2615, -1715, 0), (-540, 2425, 0)];
+    self.catbox["main quest teleports"]["zmb_town"][1] = [(1485, -440, 0), (1640, -1195, 0), (-2600, -1650, 0), (-1335, 0, 0)];
+    self.catbox["extra teleports"]["zmb_town"][1] = [(1515, -1440, 0), (-865, -275, 0), (705, 250, 0), (-1230, -880, 0)];
+
+    // town teleport angles
+    self.catbox["main teleports"]["zmb_town"][2] = [90, -90, -90];
+    self.catbox["map setup teleports"]["zmb_town"][2] = [-90, 180, 90, 0, 90, 0, 0, -90];
+    self.catbox["mystery wheel teleports"]["zmb_town"][2] = [-90, 180, -90, 0];
+    self.catbox["main quest teleports"]["zmb_town"][2] = [0, 0, 90, -90];
+    self.catbox["extra teleports"]["zmb_town"][2] = [90, 180, -90, 0];
+
+    // beast from beyond teleport names
+    self.catbox["main teleports"]["cp_final"][0] = ["pap room","spawn","control room","theatre","afterlife arcade"];
+    self.catbox["map setup teleports"]["cp_final"][0] = ["n31l's head","n31l","open theatre portal"];
+    self.catbox["mystery wheel teleports"]["cp_final"][0] = ["spawn","water room","main room","hallway","storage room","theatre","outside"];
+    self.catbox["extra teleports"]["cp_final"][0] = ["pap bridge part 1","pap bridge part 2","pap bridge part 3","pap bridge","mephistopheles arena"];
+
+    // beast from beyond teleport origins
+    self.catbox["main teleports"]["cp_final"][1] = [(5135,-5180,285),(-760,2920,90),(730,5065,90),(5515,-4515,-20),(2080,-4520,330)];
+    self.catbox["map setup teleports"]["cp_final"][1] = [(-1210,5040,-70),(45,3840,25),(1920,3470,15)];
+    self.catbox["mystery wheel teleports"]["cp_final"][1] = [(-90,2880,25),(-1215,4755,-205),(645,5710,60),(1510,4010,15),(1470,3565,-175),(5700,-4050,-70),(2185,6275,95)];
+    self.catbox["main quest teleports"]["cp_final"][1] = [(0,0,0),(0,0,0)];
+    self.catbox["extra teleports"]["cp_final"][1] = [(-855,5435,-70),(1755,3110,-290),(4990,-6835,50),(3465,6640,165),(-13300,-325,-105)];
+
+    // beast from beyond teleport angles
+    self.catbox["main teleports"]["cp_final"][2] = [90,20,-45,90,0];
+    self.catbox["map setup teleports"]["cp_final"][2] = [-155,90,90];
+    self.catbox["mystery wheel teleports"]["cp_final"][2] = [-90,-130,180,90,60,0,-50];
+    self.catbox["main quest teleports"]["cp_final"][2] = [0,0];
+    self.catbox["extra teleports"]["cp_final"][2] = [-55,60,-100,45,0];
+
+    // powerup list
+    self.catbox["powerups"][0] = ["nuke", "max ammo", "instakill", "double money", "carpenter", "pack-a-punch", "fire sale", "infinite ammo", "infinite grenades"];
+    self.catbox["powerups"][1] = ["kill_50", "ammo_max", "instakill_30", "cash_2", "board_windows", "upgrade_weapons", "fire_30", "infinite_20", "grenade_30"];
+
     self set_menu("catbox");
     self set_title(self get_menu());
 }
@@ -1203,7 +1791,7 @@ initial_monitor()
                 if (self adsButtonPressed() && self isButtonPressed("+actionslot 1"))
                 {
                     if (is_true(self.option_interact))
-                        //self playsoundtoplayer("h1_ui_menu_warning_box_appear", self);
+                        self sfx("entrance_sign_power_on_build");
                         self void();
 
                     self open_menu();
@@ -1217,6 +1805,8 @@ initial_monitor()
 
                 if (self UseButtonPressed()) // back
                 {
+                    self sfx("zmb_powerup_activate");
+
                     if (isdefined(self.previous[(self.previous.size - 1)]))
                         self new_menu(self.previous[menu]);
                     else
@@ -1229,7 +1819,7 @@ initial_monitor()
                     if (isdefined(self.structure) && self.structure.size >= 2)
                     {
                         if (is_true(self.option_interact))
-                            //self playsoundtoplayer("wpn_semtex_pin_pull", self);
+                            self sfx("zmb_powerup_activate");
                             self void();
 
                         scrolling = self isButtonPressed("+actionslot 2") ? 1 : -1;
@@ -1243,7 +1833,7 @@ initial_monitor()
                     if (is_true(self.structure[cursor]["slider"]))
                     {
                         if (is_true(self.option_interact))
-                            //self playsoundtoplayer("wpn_semtex_pin_pull", self);
+                            self sfx("zmb_wheel_wpn_acquired");
                             self void();
 
                         scrolling = self isButtonPressed("+actionslot 3") ? 1 : -1;
@@ -1261,6 +1851,7 @@ initial_monitor()
                 {
                     if (isdefined(self.structure[cursor]["function"]))
                     {
+                        self sfx("part_pickup");
                         if (is_true(self.structure[cursor]["slider"]))
                         {
                             if (is_true(self.structure[cursor]["is_array"]))
@@ -1735,7 +2326,7 @@ add_increment(text, summary, function, start, minimum, maximum, increment, argum
     option["summary"]    = summary;
     option["function"]   = function;
     option["slider"]     = true;
-    option["is_increment"]  = true;
+    option["is_increment"] = true;
     option["start"]      = start;
     option["minimum"]    = minimum;
     option["maximum"]    = maximum;
@@ -1801,7 +2392,7 @@ open_menu(menu)
     if (!isdefined(self.slider))
         self.slider = [];
 
-    self.current_menu_color = (0.537, 0.502, 0.706);
+    self.current_menu_color = (0.749, 0.251, 0.592);
 
     self.menu["hud"]["title"]        = self create_text(self get_title(), self.font, self.font_scale, "TOP_LEFT", "TOPCENTER", (self.x_offset + 4), (self.y_offset + 1.75), self.color[4], 1, 10);
     // outline
@@ -1893,10 +2484,9 @@ create_option()
             color[0] = cursor ? self.color[0] : self.color[4];
             color[1] = is_true(self.structure[index]["toggle"]) ? cursor ? self.color[0] : (1,1,1) : cursor ? self.color[2] : self.color[1];
 
+            // new menu text
             if (isdefined(self.structure[index]["function"]) && self.structure[index]["function"] == ::new_menu)
-                self void();
-                // self.menu["hud"]["submenu"][index] = self create_shader("ui_arrow_right", "TOP_RIGHT", "TOPCENTER", (self.x_offset + 212), (self.y_offset + ((i * self.option_spacing) + 22)), 4, 4, color[0], 1, 10);
-
+                self.menu["hud"]["submenu"][index] = self create_text(">", self.font, 0.65, "TOP_RIGHT", "TOPCENTER", (self.x_offset + 212), (self.y_offset + ((i * self.option_spacing) + 20)), color[0], 1, 10);
             if (isdefined(self.structure[index]["toggle"]))
             {
                 self.menu["hud"]["toggle"][index] = self create_shader("white", "TOP_LEFT", "TOPCENTER", (self.x_offset + 204), (self.y_offset + ((i * self.option_spacing) + 20)), 8, 8, color[1], .65, 10);
@@ -2066,6 +2656,16 @@ update_menu(menu, cursor, force)
     }
 }
 
+// utility stuff here
+
+callback_playerdamage_stub(var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11) 
+{
+    if (isdefined(var_4) && var_4 == "MOD_FALLING")
+        return;
+
+    self [[level.damage_original]](var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11);
+}
+
 is_valid_weapon(weapon)
 {
     if (!isdefined (weapon))
@@ -2100,22 +2700,30 @@ randomize(key)
     return final;
 }
 
-callback_playerdamage_stub(var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11) 
-{
-    if (isdefined(var_4) && var_4 == "MOD_FALLING")
-        return;
-
-    self [[level.damage_original]](var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11);
-}
-
 // gotta use a wrapper because scripts\engine\utility::istrue makes the game not load for some reason
 is_true(variable)
 {
     if (isdefined(variable) && variable)
     {
-        return 1;
+        return true;
     }
-    return 0;
+
+    return false;
+}
+
+actually_alive() // errors lol
+{
+    return isalive(self) && !toggle(self.lastStand);
+}
+
+toggle(variable) 
+{
+    return isdefined(variable) && variable;
+}
+
+get_players()
+{
+    return level.players;
 }
 
 get_zombies()
@@ -2126,6 +2734,11 @@ get_zombies()
 get_map_name()
 {
     level.mapname = getDvar("mapname");
+}
+
+is_map(map)
+{
+    return getdvar("map_name") == map;
 }
 
 // have to use this because ActionSlotButtonOnePressed etc does not exist!
@@ -2152,14 +2765,14 @@ isButtonPressed(button)
 
 monitor_buttons() 
 {
-    if (isDefined(self.now_monitoring))
+    if (isdefined(self.now_monitoring))
         return;
 
     self.now_monitoring = true;
     
-    if (!isDefined(self.button_actions))
+    if (!isdefined(self.button_actions))
         self.button_actions = ["+sprint", "+melee", "+melee_zoom", "+melee_breath", "+stance", "+gostand", "weapnext", "+actionslot 1", "+actionslot 2", "+actionslot 3", "+actionslot 4", "+forward", "+back", "+moveleft", "+moveright"];
-    if (!isDefined(self.button_pressed))
+    if (!isdefined(self.button_pressed))
         self.button_pressed = [];
     
     for(a=0 ; a < self.button_actions.size ; a++)
@@ -2201,6 +2814,17 @@ bullet_trace()
 {
     point = bullettrace(self geteye(), self geteye() + anglestoforward(self getplayerangles()) * 1000000, 0, self)["position"];
     return point;
+}
+
+set_position(origin, angles)
+{
+    self setorigin(origin);
+    self setplayerangles(angles);
+}
+
+sfx(sound)
+{
+    self playsoundtoplayer(sound, self);
 }
 
 void() {}
