@@ -18,9 +18,6 @@ main()
     setdvar("g_speed", 190);
     setdvar("g_gravity", 785);
     setdvar("bg_bounces", 1);
-
-    // replacefunc(scripts\cp\cp_weapon::can_upgrade, ::can_upgrade_hook);
-    replacefunc(scripts\cp\zombies\zombies_wor::launch_glasses, ::launch_glasses_hook);
 }
 
 init()
@@ -32,17 +29,23 @@ init()
         return;
     }
 
-    if (is_true(level.is_debug))
+
+    // enable debugging & map restart
+    if (is_true(level.is_debug) && getdvarint("is_debug") != 1)
     {
-        setdvar("developer_script", 1);
+        setdvar("is_debug", 1);
+
+        if (getdvarint("is_debug") == 1)
+        {
+            setdvar("developer_script", 1);
+            map_restart(1);
+        }
     }
 
     level thread on_player_connect();
 
-    // get_map_name();
-
     level.damage_original = level.callbackplayerdamage;
-    level.callbackplayerdamage = ::callback_playerdamage_stub; // no fall damage
+    level.callbackplayerdamage = ::callback_playerdamage_stub; // just for no fall damage
 }
 
 on_player_connect() 
@@ -52,6 +55,8 @@ on_player_connect()
     for(;;) 
     {
         level waittill("connected", player);
+        
+        get_map_name();
         player thread on_event();
     }
 }
@@ -71,7 +76,7 @@ on_event()
         {
         case "spawned_player":
 
-
+            // safety first
             if (!scripts\engine\utility::flag("introscreen_over"))
             {
                 scripts\engine\utility::flag_wait("introscreen_over");
@@ -96,23 +101,28 @@ on_event()
             // main threads
             // self thread check_weapon_class();
             self thread no_clip();
-            self thread demigod();
+            self thread demi_god();
             self thread bounce_loop();
             self thread self_revive_loop();
             self thread save_pos_bind();
             self thread load_pos_bind();
             self thread nac_bind();
             self thread add_points(5000);
+            self thread set_rank(999);
+            self thread set_max_bank();
             self thread intro();
 
             // actually have no clue what these do and they probably dont matter lol
+
+            /*
             self _meth_800C(true);
             self _meth_8009(true);
             self _meth_80D6();
             self _meth_84DD(true);
-            
-            // setup starting class
-            self.weapon_list = list("frag_grenade_zm,zfreeze_semtex_mp,iw7_knife_zm,iw7_spas_zmr+loot0,iw7_cheytacc_zm+cheytacscope_camo"); // equipment to primary
+            */
+
+            // setup starting class - base this by map soon
+            self.weapon_list = list("frag_grenade_zm,iw7_knife_zm,iw7_spas_zmr+loot0,iw7_cheytacc_zm+cheytacscope_camo"); // equipment to primary
 
             // set default melee weapon
             self.starting_melee = "iw7_knife_zm";
@@ -121,18 +131,19 @@ on_event()
 
             // give the starting class
             self takeallweapons();
+            self thread set_starter_perks();
             foreach(weapon in self.weapon_list)
             {
                 self g_weapon(weapon);
             }
 
-            self thread set_starter_perks();
-
-            // wait a lil to prevent errors
-            wait 3;
+            wait 3; // wait a lil to prevent errors
+            self takeweapon("iw7_fists_zm"); // some maps give this as a third weapon lmfao
+            self thread set_zombie_health(); // make all zombies 1 shot
             self thread scripts\cp\zombies\direct_boss_fight::open_sesame();
             break;
         case "death":
+        case "player_downed":
         default:
             self thread close_menu_if_open();
             break;
@@ -172,18 +183,20 @@ render_menu_options()
     switch(menu)
     {
     case "catbox":
-        self add_menu("@catbox");
+        // self.is_bind_menu = false;
+        self add_menu("@catbox - " + self get_name());
         self add_option("settings", undefined, ::new_menu, "settings");
         self add_option("weapons", undefined, ::new_menu, "weapons");
         self add_option("perks", undefined, ::new_menu, "perks");
         self add_option("zombies", undefined, ::new_menu, "zombies");
         self add_option("aimbot", undefined, ::new_menu, "aimbot");
         self add_option("teleports", undefined, ::new_menu, "teleports");
-        self add_option("dvars", undefined, ::new_menu, "dvars");
+        self add_option("game stuff", undefined, ::new_menu, "game");
         self add_option("account", undefined, ::new_menu, "account");
-        self add_option("clients", undefined, ::new_menu, "all players");
+        // self add_option("clients", undefined, ::new_menu, "all players");
         break;
     case "settings":
+        // self.is_bind_menu = false;
         self add_menu("settings");
         self add_option("nac bind", undefined, ::new_menu, "nac bind");
         self add_increment("add points", increment_controls, ::add_points, self getrankedplayerdata("cp", "alienSession", "currency"), 100, 100000, 100);
@@ -195,17 +208,20 @@ render_menu_options()
         self add_toggle("completely hide ui", undefined, ::hide_ui, self.hide_ui);
         self add_toggle("third person", undefined, ::toggle_third_person, self.third_person);
         self add_toggle("freeze box", undefined, ::toggle_frozen_box, self.frozen_box);
-        self add_option("give sunglasses", undefined, ::launch_glasses_hook);
+        // if (getdvar("mapname") == "cp_zmb") self add_option("give sunglasses", undefined, ::launch_glasses_hook);
         self add_option("spawn bounce", undefined, ::spawn_bounce);
         self add_option("delete last bounce", undefined, ::delete_bounce);
         self add_option("fill consumables", undefined, ::fill_consumables);
         self add_option("unlink", undefined, ::unlink_player);
         break;
     case "weapons":
+        // self.is_bind_menu = false;
         self add_menu("weapons");
         self add_toggle("take weapon on give", undefined, ::toggle_take_weapon, self.take_weapon);
         self add_toggle("infinite ammo", undefined, ::toggle_infinite_ammo, self.infinite_ammo);
         self add_toggle("infinite equipment", undefined, ::toggle_infinite_equipment, self.infinite_equipment);
+        self add_option("drop weapon", undefined, ::drop_weapon);
+        self add_option("take weapon", undefined, ::take_my_weapon);
         self add_option("refill all weapons", undefined, ::refill_my_ammo);
         self add_option("snipers", undefined, ::new_menu, "snipers");
         self add_option("smg", undefined, ::new_menu, "smg");
@@ -216,6 +232,7 @@ render_menu_options()
         self add_option("others", undefined, ::new_menu, "others");
         break;
     case "perks":
+        // self.is_bind_menu = false;
         self add_menu("perks");
         perks = level.perks;
         self add_option("give all perks", undefined, ::perkaholic);
@@ -226,18 +243,21 @@ render_menu_options()
         }
         break;
     case "snipers":
+        // self.is_bind_menu = false;
         self add_menu("snipers");
-        self add_option("tf-141 (irons)", undefined, ::g_weapon, "iw7_cheytacc_zm");
-        self add_option("tf-141 (scoped)", undefined, ::g_weapon, "iw7_cheytacc_zm+cheytacscope_camo");
+        self add_option("tf-141 (irons)", undefined, ::g_weapon, "iw7_cheytacc_zm+loot0");
+        self add_option("tf-141 (scoped)", undefined, ::g_weapon, "iw7_cheytacc_zm+cheytacscope_camo+loot0");
         self add_option("widowmaker", undefined, ::g_weapon, "iw7_cheytac_zmr");
         self add_option("trek-50", undefined, ::g_weapon, "iw7_ba50cal_zm");
         self add_option("dmr-1", undefined, ::g_weapon, "iw7_m1_zm");
         self add_option("dmr-1 (scoped)", undefined, ::g_weapon, "iw7_m1_zm+m1scope_camo");
         self add_option("ebr-800", undefined, ::g_weapon, "iw7_m8_zm");
-        self add_option("kbs longbow (irons)", undefined, ::g_weapon, "iw7_kbs_zm");
+        self add_option("kbs longbow", undefined, ::g_weapon, "iw7_kbs_zm+kbsscope_zm_camo+loot0");
+        self add_option("kbs longbow (irons)", undefined, ::g_weapon, "iw7_kbs_zm+loot0");
         self add_option("proteus", undefined, ::g_weapon, "iw7_longshot_zm+longshotlscope_zm");
         break;
     case "smg":
+        // self.is_bind_menu = false;
         self add_menu("smg");
         self add_option("erad", undefined, ::g_weapon, "iw7_erad_zm");
         self add_option("karma-45", undefined, ::g_weapon, "iw7_crb_zm");
@@ -249,6 +269,7 @@ render_menu_options()
         self add_option("vpr", undefined, ::g_weapon, "iw7_crdb_zm");
         break;
     case "ar":
+        // self.is_bind_menu = false;
         self add_menu("ar");
         self add_option("kbar-32", undefined, ::g_weapon, "iw7_ar57_zm");
         self add_option("r3k", undefined, ::g_weapon, "iw7_sdfar_zm");
@@ -260,6 +281,7 @@ render_menu_options()
         self add_option("g-rail", undefined, ::g_weapon, "iw7_gauss_zm");
         break;
     case "shotguns":
+        // self.is_bind_menu = false;
         self add_menu("shotguns");
         self add_option("rack-9", undefined, ::g_weapon, "iw7_spas_zmr");
         self add_option("s-ravage", undefined, ::g_weapon, "iw7_spasc_zm");
@@ -270,8 +292,9 @@ render_menu_options()
         self add_option("dcm-8", undefined, ::g_weapon, "iw7_sdfshotty_zm+sdfshottyscope_camo");
         break;
     case "pistols":
+        // self.is_bind_menu = false;
         self add_menu("pistols");
-        if (getdvar("mapname") == "cp_zmb")
+        if (getdvar("mapname") == "cp_zmb") // spaceland specials
         {
             self add_option("face melter", undefined, ::g_weapon, "iw7_facemelter_zm");
             self add_option("head cutter", undefined, ::g_weapon, "iw7_headcutter_zm");
@@ -289,6 +312,7 @@ render_menu_options()
         self add_option("udm", undefined, ::g_weapon, "iw7_udm45_zm+udm45scope");
         break;
     case "lmg":
+        // self.is_bind_menu = false;
         self add_menu("lmg");
         self add_option("r.a.w", undefined, ::g_weapon, "iw7_sdflmg_zm");
         self add_option("mauler", undefined, ::g_weapon, "iw7_mauler_zm");
@@ -297,12 +321,15 @@ render_menu_options()
         self add_option("auger", undefined, ::g_weapon, "iw7_minilmg_zm");
         break;
     case "others":
+        // self.is_bind_menu = false;
         self add_menu("others");
         self add_option("c4", undefined, ::g_weapon, "c4_zm");
-        self add_option("willard's dagger", undefined, ::g_weapon, "iw7_wylerdagger_zm");
+        self add_option("fists", undefined, ::g_weapon, "iw7_fists_zm");
+        self add_option("entangler", undefined, ::g_weapon, "iw7_entangler_zm");
 
         if (getdvar("mapname") == "cp_zmb")
         {
+            self add_option("willard's dagger", undefined, ::g_weapon, "iw7_wylerdagger_zm");
             self add_option("forge freeze", undefined, ::g_weapon, "iw7_forgefreeze_zm+forgefreezealtfire");
         }
         self add_option("eraser", undefined, ::g_weapon, "iw7_atomizer_mp");
@@ -315,6 +342,7 @@ render_menu_options()
         self add_option("golden axe", undefined, ::g_weapon, "iw7_axe_zm_pap2");
         break;
     case "zombies":
+        // self.is_bind_menu = false;
         self add_menu("zombies");
         self add_option("spawn zombies", undefined, ::new_menu, "spawn zombies");
         self add_option("teleport all zombies", undefined, ::teleport_zombies);
@@ -324,21 +352,25 @@ render_menu_options()
         self add_increment("outline color", increment_controls, ::set_outline_color, self.outline_color, 0, 5, 1, true, "outline");
         break;
     case "spawn zombies":
+        // self.is_bind_menu = false;
         self add_menu("spawn zombies");
-        map = getdvar("mapname");
+        map = level.map_name;
+
         for(i = 0; i < self.catbox["zombies"][map][0].size; i++) 
         {
             self add_option("spawn " + self.catbox["zombies"][map][1][i], undefined, ::spawn_zombie, self.catbox["zombies"][map][0][i]);
         }
         break;
     case "teleports":
+        // self.is_bind_menu = false;
         self add_menu("teleports");
-        map = getdvar("mapname");
+        map = level.map_name;
+
         for(i = 0; i < self.catbox["main teleports"][map][0].size; i++) 
         {
             self add_option(self.catbox["main teleports"][map][0][i], undefined, ::set_position, self.catbox["main teleports"][map][1][i], (0, self.catbox["main teleports"][map][2][i], 0));
         }
-
+        
         if (isdefined(self.catbox["map setup teleports"][map][0])) 
         {
             self add_option("map setup teleports", undefined, ::new_menu, "map setup teleports");
@@ -360,47 +392,54 @@ render_menu_options()
         }
         break;
     case "map setup teleports":
+        // self.is_bind_menu = false;
         self add_menu("map setup teleports");
-        map = getdvar("mapname");
+        map = level.map_name;
         for(i = 0; i < self.catbox["map setup teleports"][map][0].size; i++) 
         {
             self add_option(self.catbox["map setup teleports"][map][0][i], undefined, ::set_position, self.catbox["map setup teleports"][map][1][i], (0, self.catbox["map setup teleports"][map][2][i], 0));
         }
         break;
     case "mystery wheel teleports":
+        // self.is_bind_menu = false;
         self add_menu("mystery wheel teleports");
-        map = getdvar("mapname");
+        map = level.map_name;
         for(i = 0; i < self.catbox["mystery wheel teleports"][map][0].size; i++) 
         {
             self add_option(self.catbox["mystery wheel teleports"][map][0][i], undefined, ::set_position, self.catbox["mystery wheel teleports"][map][1][i], (0, self.catbox["mystery wheel teleports"][map][2][i], 0));
         }
         break;
     case "main quest teleports":
+        // self.is_bind_menu = false;
         self add_menu("main quest teleports");
-        map = getdvar("mapname");
+        map = level.map_name;
         for(i = 0; i < self.catbox["main quest teleports"][map][0].size; i++) 
         {
             self add_option(self.catbox["main quest teleports"][map][0][i], undefined, ::set_position, self.catbox["main quest teleports"][map][1][i], (0, self.catbox["main quest teleports"][map][2][i], 0));
         }
         break;
     case "extra teleports":
+        // self.is_bind_menu = false;
         self add_menu("extra teleports");
-        map = getdvar("mapname");
+        map = level.map_name;
         for(i = 0; i < self.catbox["extra teleports"][map][0].size; i++) 
         {
             self add_option(self.catbox["extra teleports"][map][0][i], undefined, ::set_position, self.catbox["extra teleports"][map][1][i], (0, self.catbox["extra teleports"][map][2][i], 0));
         }
         break;
     case "aimbot":
+        // self.is_bind_menu = false;
         self add_menu("aimbot");
         self add_toggle("toggle aimbot", undefined, ::toggle_aimbot, self.aimbot);
         self add_option("aimbot weapon", undefined, ::set_aimbot_weapon);
         self add_increment("aimbot range", increment_controls, ::set_aimbot_range, self.aimbot_range, 100, 4000, 100);
         self add_increment("aimbot delay", increment_controls, ::set_aimbot_delay, self.aimbot_delay, 0, 1, 0.1);
         break;
-    case "dvars":
+    case "game":
+        // self.is_bind_menu = false;
         // add_increment(text, summary, function, start, minimum, maximum, increment, argument_1, argument_2, argument_3)
-        self add_menu("dvars");
+        self add_menu("game");
+        self add_option("powerups", undefined, ::new_menu, "powerups");
         self add_increment("timescale", increment_controls, ::set_timescale, getdvarfloat("timescale"), 0.25, 10, 0.25);
         self add_increment("gravity", increment_controls, ::set_gravity, getdvarint("g_gravity"), 100, 800, 25);
         self add_increment("bounces", increment_controls, ::set_bounces, getdvarint("bg_bounces"), 0, 1, 1);
@@ -412,10 +451,19 @@ render_menu_options()
         self add_increment("empty reload time", increment_controls, ::set_empty_reload_time, getdvarfloat("perk_weapReloadMultiplierEmpty"), 0.05, 1, 0.05);
         self add_increment("unlimited sprint", increment_controls, ::set_unlimited_sprint, getdvarint("player_sprintUnlimited"), 0, 1, 1);
         break;
+    case "powerups":
+        self add_menu("powerups");
+        for(i = 0; i < self.catbox["powerups"][0].size; i++) 
+        {
+            self add_option("spawn " + self.catbox["powerups"][0][i], undefined, ::spawn_powerup, self.catbox["powerups"][1][i]);
+        }
+        break;
     case "account":
+        // self.is_bind_menu = false;
         self add_menu("account");
+        self add_option("derank myself", undefined, ::derank);
         self add_increment("change prestige", increment_controls, ::set_prestige, self getrankedplayerdata("cp", "progression", "playerLevel", "prestige"), 0, 20, 1);
-        self add_increment("change level", increment_controls, ::set_rank, self getrankedplayerdata("cp", "progression", "playerLevel", "xp"), 1, 999, 1);
+        // self add_increment("change level", increment_controls, ::set_rank, self getrankedplayerdata("cp", "progression", "playerLevel", "xp"), 1, 999, 1);
         self add_option("max out all weapons", undefined, ::set_max_weapons);
         self add_option("complete all challenges", undefined, ::complete_challenges);
         self add_option("complete contracts", undefined, ::complete_active_contracts);
@@ -423,6 +471,7 @@ render_menu_options()
         self add_toggle("temporary director's cut", undefined, ::temp_directors_cut, self.temp_directors_cut);
         break;
     case "nac bind":
+        self.is_bind_menu = true;
         self add_menu("nac bind");
         self add_option("set first weapon", undefined, ::set_first_weapon);
         self add_option("set second weapon", undefined, ::set_second_weapon);
@@ -437,10 +486,29 @@ render_menu_options()
         }
         break;
     default:
+        /*
+        if (is_true(self.is_bind_menu))
+            self bind_index(menu, func);
+        else
+            self player_index(menu, self.select_player);
+        */
+
         self player_index(menu, self.select_player);
         break;
     }
 }
+
+/*
+bind_index(menu, func)
+{
+    self add_menu(menu);
+
+    for(i = 0; i < 4; i++)
+    {
+        self add_option(va("%s -> %s", menu, "[{+actionslot" + i + "}]"), func, i);
+    }
+}
+*/
 
 player_index(menu, player)
 {
@@ -464,19 +532,91 @@ player_index(menu, player)
     }
 }
 
+max_ammo()
+{
+    weapons = self getWeaponsListPrimaries();
+    foreach(weap in weapons)
+    {
+        self setweaponammostock(weap, 9999);
+        //self setweaponammostock(weap, 9999, "left");
+        // self setweaponammostock(weap, 9999, "right");
+        self scripts\cp\powers\coop_powers::power_adjustcharges(2, "primary", 2);
+        self scripts\cp\powers\coop_powers::power_adjustcharges(2, "secondary", 2);
+    }
+}
+
+set_spectator()
+{
+    self.is_spectating = !toggle(self.is_spectating);
+
+    if (self.is_spectating)
+    {
+        scripts\cp\utility::updatesessionstate("spectator");
+    }
+    else
+    {
+        scripts\cp\utility::updatesessionstate("playing");
+    }
+}
+
+spawn_powerup(powerup) 
+{
+    trace = self bullet_trace();
+	level scripts\cp\loot::drop_loot(trace, undefined, powerup, undefined, undefined, 1);
+}
+
+derank()
+{
+    self thread set_rank(0);
+    self thread set_prestige(0);
+    self iprintlnbold("^:set rank & prestige to 0");
+}
+
+set_zombie_health()
+{
+    self endon("disconnect");
+    level endon("game_ended");
+
+    for(;;)
+    {
+        foreach(zombie in get_zombies())
+        {
+            zombie.maxhealth = 1;
+            zombie.health = zombie.maxhealth;
+        }
+
+        wait 0.25;
+    }
+}
+
 toggle_infinite_ammo()
 {
     self.infinite_ammo = !toggle(self.infinite_ammo);
 
-    if (!self.infinite_ammo)
+    if (self.infinite_ammo)
     {
         self thread infinite_ammo();
-        self iprintln("infinite ammo ^2on");
     }
     else
     {
         self notify("stop_infinite_ammo");
-        self iprintln("infinite ammo ^1off");
+    }
+}
+
+infinite_ammo()
+{
+    self endon("disconnect");
+    self endon("stop_infinite_ammo");
+    level endon("game_ended");
+
+    for(;;)
+    {
+        self waittill("reload");
+        self setweaponammostock(self getcurrentweapon(), 9999);
+        // self setweaponammostock(self getcurrentweapon(), 9999, "left");
+        // self setweaponammostock(self getcurrentweapon(), 9999, "right");
+		self scripts\cp\powers\coop_powers::power_adjustcharges(2, "primary", 2);
+		self scripts\cp\powers\coop_powers::power_adjustcharges(2, "secondary", 2);
     }
 }
 
@@ -484,55 +624,40 @@ toggle_infinite_equipment()
 {
     self.infinite_equipment = !toggle(self.infinite_equipment);
 
-    if (!self.infinite_equipment)
+    if (self.infinite_equipment)
     {
         self thread infinite_equipment();
-        self iprintln("infinite equipment ^2on");
     }
     else
     {
         self notify("stop_infinite_equipment");
-        self iprintln("infinite equipment ^1off");
-    }
-}
-
-infinite_ammo()
-{
-    self endon("disconnect");
-    level endon("game_ended");
-
-    for(;;)
-    {
-        self waittill("reload");
-        self setweaponammostock(self getcurrentweapon(), 9999);
     }
 }
 
 infinite_equipment()
 {
     self endon("disconnect");
+    self endon("stop_infinite_equipment");
     level endon("game_ended");
 
     for(;;)
     {
-        self waittill("grenade_fire", grenade, name);
-        waittillframeend;
-        power = scripts\mp\powers::_id_D737(name);
-        self scripts\mp\powers::_id_D74C(power);
-        // power = scripts\cp\powers\coop_powers::restore_powers(name); 
+		self scripts\cp\powers\coop_powers::power_adjustcharges(2, "primary", 2);
+		self scripts\cp\powers\coop_powers::power_adjustcharges(2, "secondary", 2);
+        wait 2;
     }
 }
 
 set_first_weapon()
 {
     self.weapon_one = self getcurrentweapon();
-    self iprintln("first weapon: ^:" + self.weapon_one);
+    self iprintlnbold("first weapon: ^:" + self.weapon_one);
 }
 
 set_second_weapon()
 {
     self.weapon_two = self getcurrentweapon();
-    self iprintln("second weapon: ^:" + self.weapon_two);
+    self iprintlnbold("second weapon: ^:" + self.weapon_two);
 }
 
 nac_bind()
@@ -557,10 +682,12 @@ nac_bind()
         {
             self nacto(self.weapon_two);
         }
-
-        if (self getcurrentweapon() == self.weapon_two)
+        else 
         {
-            self nacto(self.weapon_one);
+            if (self getcurrentweapon() == self.weapon_two)
+            {
+                self nacto(self.weapon_one);
+            }
         }
     }
 }
@@ -632,7 +759,7 @@ set_max_weapons()
         self setplayerdata("common", "sharedProgression", "weaponLevel", weapon, "cpXP", 54300);
         self setplayerdata("common", "sharedProgression", "weaponLevel", weapon, "prestige", 3);
 
-        self iprintln("set ^:" + weapon + "^7 to max");
+        self iprintlnbold("set ^:" + weapon + "^7 to max");
 
         wait 0.175;
     }
@@ -662,13 +789,13 @@ complete_challenges()
             if (meritProgress < meritInfo[(meritInfo.size - 1)]) 
             {
                 self setplayerdata("cp", "meritProgress", merit, meritInfo[(meritInfo.size - 1)]);
-                self iprintln("completed challenge " + merit);
+                self iprintlnbold("completed challenge " + merit);
             }
 
             if (meritState < meritInfo.size) 
             {
                 self setplayerdata("cp", "meritState", merit, meritInfo.size);
-                self iprintln("completed challenge " + merit);
+                self iprintlnbold("completed challenge " + merit);
             }
 
             wait 0.175;
@@ -710,9 +837,9 @@ unlock_soul_keys()
     self setplayerdata("cp", "haveSoulKeys", "soul_key_4", 1);
     self setplayerdata("cp", "haveSoulKeys", "soul_key_5", 1);
 
-    self iprintln("soul keys ^2given");
+    self iprintlnbold("soul keys ^2given");
     wait 2.5;
-    self iprintln("active the jar to unlock director's cut");
+    self iprintlnbold("active the jar to unlock director's cut");
 
     self set_position((-10250, 875, -1630), (0, 90, 0));
 }
@@ -723,12 +850,10 @@ temp_directors_cut()
 
     if (self.temp_directors_cut) 
     {
-        self iprintln("temp director's cut ^2unlocked");
         self setplayerdata("cp", "dc", 1);
     } 
     else 
     {
-        self iprintln("temp director's cut ^1locked");
         self setplayerdata("cp", "dc", 0);
     }
 }
@@ -739,12 +864,10 @@ outline_zombies()
 
     if (self.zombie_outline)
     {
-        self iprintln("zombie outlines ^2on");
         self thread zombie_outline_loop();
     }
     else
     {
-        self iprintln("zombie outlines ^1off");
         self notify("stop_outlining_zombies");
         
         foreach(zombie in get_zombies())
@@ -817,12 +940,10 @@ toggle_frozen_box()
 
     if (!self.frozen_box)
     {
-        self iprintln("frozen box ^2on");
         self thread frozen_box_loop();
     }
     else if (self.frozen_box)
     {
-        self iprintln("frozen box ^1off");
         level.var_B162  = 1;
         level.var_13D01 = 4;
         self notify("stop_frozen_box");
@@ -849,7 +970,7 @@ set_max_bank()
     level.atm_amount_deposited = 2147483647; 
 }
 
-demigod()
+demi_god()
 {
     self endon("disconnect");
     level endon("game_ended");
@@ -867,13 +988,11 @@ toggle_third_person()
 
     if (!self.third_person)
     {
-        self iprintln("third person ^2on");
         setdvar("camera_thirdPerson", 1);
         scripts\cp\utility::setthirdpersondof(1);
     }
     else if (self.third_person)
     {
-        self iprintln("third person ^1off");
         setdvar("camera_thirdPerson", 0);
         scripts\cp\utility::setthirdpersondof(0);
     }
@@ -883,60 +1002,50 @@ toggle_third_person()
 
 toggle_exo_movement()
 {
-    if (!isdefined(self.exo_movement)) self.exo_movement = false;
+    self.exo_movement = !toggle(self.exo_movement);
 
-    if (!self.exo_movement)
+    if (self.exo_movement)
     {
-        self iprintln("exo movement ^2on");
         self allowdoublejump(1);
         self allowwallrun(1);
         self allowdodge(1);
         self allowMantle(1);
         self.disabledMantle = 0;
     }
-    else if (self.exo_movement)
+    else
     {
-        self iprintln("exo movement ^1off");
         self allowdoublejump(0);
         self allowwallrun(0);
         self allowdodge(0);
         self allowMantle(0);
         self.disabledMantle = 1;
     }
-
-    self.exo_movement = !self.exo_movement;
 }
 
 self_revive_loop() 
 {
-    self endon("disconnect");
     level endon("game_ended");
-
     for(;;) 
     {
         self.self_revive = 1;
-        wait 5;
+        wait 3;
     }
 }
 
 // aimbot stuff
 toggle_aimbot()
 {
-    if (!isdefined(self.aimbot)) self.aimbot = false;
+    self.aimbot = !toggle(self.aimbot);
 
-    if (!self.aimbot)
+    if (self.aimbot)
     {
-        self iprintln("aimbot ^2on ^7(^:" + self getcurrentweapon() + "^7)");
         self.aimbot_weapon = self getcurrentweapon();
         self thread aimbot();
     }
-    else if (self.aimbot)
+    else
     {
-        self iprintln("aimbot ^1off");
         self notify("stop_aimbot");
     }
-
-    self.aimbot = !self.aimbot;
 }
 
 aimbot() 
@@ -1042,6 +1151,8 @@ give_xp(xp) // xp popup
     self thread scripts\cp\cp_persistence::give_player_xp(xp, 1);
 }
 
+/*
+
 give_sunglasses() // im so cool and epic and stuff
 {
     // cant just call give_glasses_power because when you force give & turn off vision doesnt go away
@@ -1051,27 +1162,32 @@ give_sunglasses() // im so cool and epic and stuff
 // hook so the glasses dont fucking launch in front of you
 launch_glasses_hook()
 {
-    self endon("deleting_glasses");
-    // scripts\cp\powers\coop_powers::removepower("power_glasses"); // causes a shit ton of errors for some reason lol
-    var_00 = 25;
-    var_01 = self gettagorigin("tag_eye");
-    var_02 = self gettagangles("tag_eye");
-    var_02 = anglestoforward(var_02);
-    var_03 = vectornormalize(var_02) + (0,0,0.25);
-    var_03 = var_03 * var_00;
-    var_04 = self getvelocity();
-    var_03 = var_03 + var_04;
-    var_05 = spawn("script_model",var_01);
-    var_05 setmodel("zmb_sunglass_01_wm");
-    var_05 physicslaunchserver(var_01,var_03);
-    wait(0.1);
-    var_05 thread scripts\cp\zombies\zombies_wor::pick_up_knocked_off_glasses();
-    var_05 thread scripts\cp\zombies\zombies_wor::delete_glasses_after_time(10);
-    var_05 waittill("trigger",var_06);
-    var_06 scripts\cp\zombies\zombies_wor::give_glasses_power();
-    var_05 notify("glasses_picked_up");
-    var_05 delete();
+    if (getdvar("mapname") == "cp_zmb")
+    {
+        self endon("deleting_glasses");
+        // scripts\cp\powers\coop_powers::removepower("power_glasses"); // causes a shit ton of errors for some reason lol
+        var_00 = 25;
+        var_01 = self gettagorigin("tag_eye");
+        var_02 = self gettagangles("tag_eye");
+        var_02 = anglestoforward(var_02);
+        var_03 = vectornormalize(var_02) + (0,0,0.25);
+        var_03 = var_03 * var_00;
+        var_04 = self getvelocity();
+        var_03 = var_03 + var_04;
+        var_05 = spawn("script_model",var_01);
+        var_05 setmodel("zmb_sunglass_01_wm");
+        var_05 physicslaunchserver(var_01,var_03);
+        wait(0.1);
+        var_05 thread scripts\cp\zombies\zombies_wor::pick_up_knocked_off_glasses();
+        var_05 thread scripts\cp\zombies\zombies_wor::delete_glasses_after_time(10);
+        var_05 waittill("trigger",var_06);
+        var_06 scripts\cp\zombies\zombies_wor::give_glasses_power();
+        var_05 notify("glasses_picked_up");
+        var_05 delete();
+    }
 }
+
+*/
 
 // zombies stuff
 teleport_zombies()
@@ -1088,7 +1204,7 @@ freeze_all_zombies()
 {
     if (!self.frozen_zombies)
     {
-        self iprintln("zombies ^2frozen");
+        self iprintlnbold("zombies ^2frozen");
         self.frozen_zombies = true;
 
         foreach(zombie in get_zombies())
@@ -1098,7 +1214,7 @@ freeze_all_zombies()
     } 
     else
     {
-        self iprintln("zombies ^1unfrozen");
+        self iprintlnbold("zombies ^1unfrozen");
         self.frozen_zombies = false;
 
         foreach(zombie in get_zombies())
@@ -1112,24 +1228,35 @@ zombies_ignore_me()
 {
     if (!self.ignoreme)
     {
-        self iprintln("zombies ignore you ^2on");
+        self iprintlnbold("zombies ignore you ^2on");
         self.ignoreme = true;
     }
     else
     {
-        self iprintln("zombies ignore you ^1off");
+        self iprintlnbold("zombies ignore you ^1off");
         self.ignoreme = false;
     }
 }
 
 g_weapon(i)
 {
-    if (is_true(self.take_weapon)) 
+    if (is_true(self.take_weapon) && i != "c4_zm") 
         self takeweapon(self getcurrentweapon());
 
     self scripts\cp\utility::_giveweapon(i);
     self switchtoweapon(i);
     self givemaxammo(i);
+}
+
+take_my_weapon(i)
+{
+    self takeweapon(self getcurrentweapon());
+    self switchtoweapon(self getweaponslistprimaries()[1]);
+}
+
+drop_weapon(i)
+{
+    self dropitem(self getcurrentweapon());
 }
 
 intro()
@@ -1142,7 +1269,7 @@ save_position()
 {
     self.saved_origin = self getorigin();
     self.saved_angles = self getplayerangles();
-    self iprintln("^:position saved - " + self.saved_origin + " / " + self.saved_angles);
+    self iprintlnbold("^:position saved - " + self.saved_origin + " / " + self.saved_angles);
 }
 
 load_position()
@@ -1194,7 +1321,6 @@ no_clip()
     for(;;)
     {
         self waittill("+melee_zoom");
-        print("yea");
         if (self adsButtonPressed())
         {
             if (b == 0)
@@ -1205,7 +1331,7 @@ no_clip()
             else
             {
                 b = 0;
-                self notify("stopclipping");
+                self notify("stop_noclip");
                 self unlink();
             } 
         }
@@ -1214,7 +1340,7 @@ no_clip()
 
 go_no_clip() 
 {
-    self endon("stopclipping");
+    self endon("stop_noclip");
 
     if (isdefined(self.newufo)) self.newufo delete();
 
@@ -1241,10 +1367,13 @@ unlink_player() // cheeky fix for when no clip breaks lol
 }
 
 toggle_take_weapon()
-{
+{   
+    self.take_weapon = !toggle(self.take_weapon);
+    /*
     if (!isdefined(self.take_weapon)) self.take_weapon = false;
     self.take_weapon = !self.take_weapon;
-    self iprintln("taking weapon " + (self.take_weapon ? "^2on" : "^1off"));
+    self iprintlnbold("taking weapon " + (self.take_weapon ? "^2on" : "^1off"));
+    */
 }
 
 // fills but doesnt let you select -- look into this
@@ -1267,7 +1396,9 @@ set_zombie_perk(perk)
     if (!scripts\cp\utility::has_zombie_perk(perk))
     {
         self thread give_zombie_perk(perk);
-    } else {
+    } 
+    else
+    {
         self thread take_zombie_perk(perk);
     }
 }
@@ -1354,12 +1485,12 @@ toggle_gesture_bind()
 
     if (!self.gesture_bind)
     {
-        self iprintln("gesture bind ^:enabled ^7([{+actionslot 4}])");
+        self iprintlnbold("gesture bind ^:enabled ^7([{+actionslot 4}])");
         self thread gesture_bind();
     }
     else if (self.gesture_bind)
     {
-        self iprintln("gesture bind ^1off");
+        self iprintlnbold("gesture bind ^1off");
         self notify("stop_gesture_bind");
     }
 
@@ -1394,7 +1525,7 @@ refill_my_ammo()
 
     foreach(weap in weapons)
     {
-        self givemaxammo(weap);
+        self max_ammo(weap);
     }
 }
 
@@ -1403,7 +1534,8 @@ spawn_bounce()
 {
     x = int(self getpers("bouncecount"));
     x++;
-    self setpers("bouncecount",x);
+
+    self setpers("bouncecount", x);
     self setpers("bouncepos" + x, self getorigin()[0] + "," + self getorigin()[1] + "," + self getorigin()[2]);
     self iprintlnbold("^:spawned a bounce at " + self getorigin());
 }
@@ -1413,11 +1545,11 @@ delete_bounce()
     x = int(self getpers("bouncecount"));
 
     if (x == 0)
-        return self iprintlnbold("No Bounces To Delete");
+        return self iprintlnbold("no bounces to delete");
 
     iprintlnbold("^:bounce " + x + "deleted");
     x--;
-    self setpers("bouncecount",x);
+    self setpers("bouncecount", x);
 }
 
 bounce_loop()
@@ -1427,9 +1559,9 @@ bounce_loop()
         for(i=1;i<int(self getpers("bouncecount")) + 1;i++)
         {
             pos = perstovector(self getpers("bouncepos" + i));
-            if (Distance(self getorigin(), pos) < 90 && self GetVelocity()[2] < -250)
+            if (distance(self getorigin(), pos) < 90 && self getvelocity()[2] < -250)
             {
-                self SetVelocity(self GetVelocity() - (0,0,self GetVelocity()[2] * 2));
+                self setvelocity(self getvelocity() - (0,0,self getvelocity()[2] * 2));
                 wait 0.2;
             }
         }
@@ -1440,21 +1572,16 @@ bounce_loop()
 // fake elevators
 toggle_elevators()
 {
-    if (!isdefined(self.elevators)) self.elevators = false;
+    self.elevators = !toggle(self.elevators);
 
-    if (!self.elevators)
+    if (self.elevators)
     {
-        self iprintln("elevators ^2on");
-        self iprintln("^7crouch + aim to elevate, jump to detach");
         self thread elevators();
     }
-    else if (self.elevators)
+    else
     {
-        self iprintln("elevators ^1off");
         self notify("stop_elevator");
     }
-
-    self.elevators = !self.elevators;
 }
 
 elevators()
@@ -1514,20 +1641,16 @@ stop_elevator()
 // auto proning
 do_auto_prone()
 {
-    if (!isdefined(self.auto_prone)) self.auto_prone = false;
+    self.auto_prone = !toggle(self.auto_prone);
 
-    if (!self.auto_prone)
+    if (self.auto_prone)
     {
-        self iprintln("auto prone ^2on");
         self thread auto_prone();
     }
-    else if (self.auto_prone)
+    else
     {
-        self iprintln("auto prone ^1off");
         self notify("stop_auto_prone");
     }
-
-    self.auto_prone = !self.auto_prone;
 }
 
 auto_prone()
@@ -1578,20 +1701,16 @@ loop_auto_prone()
 // auto reload
 do_auto_reload()
 {
-    if (!isdefined(self.auto_reload)) self.auto_reload = false;
+    self.auto_reload = !toggle(self.auto_reload);
 
-    if (!self.auto_reload)
+    if (self.auto_reload)
     {
-        self iprintln("auto reload ^2on");
         self thread auto_reload();
     }
-    else if (self.auto_reload)
+    else
     {
-        self iprintln("auto reload ^1off");
         self notify("stop_autoreload");
     }
-
-    self.auto_reload = !self.auto_reload;
 }
 
 auto_reload()
@@ -1640,7 +1759,6 @@ initial_variable()
     self.cursor   = [];
     self.previous = [];
 
-
     // game variables
 
     // zombie list
@@ -1688,67 +1806,67 @@ initial_variable()
     self.catbox["extra teleports"]["cp_zmb"][2] = [-90, 180, -90, 0, 0, 0, 90, 50, 60, -100, 135];
 
     // rave teleport names
-    self.catbox["main teleports"]["zmb_rave"][0] = ["spawn", "pap room", "ritual circle", "main portal"];
-    self.catbox["map setup teleports"]["zmb_rave"][0] = ["spawn power", "mess hall power", "lake power", "mine power"];
-    self.catbox["mystery wheel teleports"]["zmb_rave"][0] = ["mess hall", "lake", "mines", "cabins"];
-    self.catbox["main quest teleports"]["zmb_rave"][0] = ["film reel 1", "film reel 2", "film reel 3", "dj booth"];
-    self.catbox["extra teleports"]["zmb_rave"][0] = ["vhs tape", "kevin mask", "rave mask", "worm mask"];
+    self.catbox["main teleports"]["cp_rave"][0] = ["spawn", "pap room", "ritual circle", "main portal"];
+    self.catbox["map setup teleports"]["cp_rave"][0] = ["spawn power", "mess hall power", "lake power", "mine power"];
+    self.catbox["mystery wheel teleports"]["cp_rave"][0] = ["mess hall", "lake", "mines", "cabins"];
+    self.catbox["main quest teleports"]["cp_rave"][0] = ["film reel 1", "film reel 2", "film reel 3", "dj booth"];
+    self.catbox["extra teleports"]["cp_rave"][0] = ["vhs tape", "kevin mask", "rave mask", "worm mask"];
 
     // rave teleport origins
-    self.catbox["main teleports"]["zmb_rave"][1] = [(-750, 1085, 0), (-140, 1960, -90), (-1120, -490, 0), (-1585, -345, 0)];
-    self.catbox["map setup teleports"]["zmb_rave"][1] = [(465, 1075, 0), (2250, -825, 100), (-1775, -2375, 65), (-1075, 2300, -100)];
-    self.catbox["mystery wheel teleports"]["zmb_rave"][1] = [(2165, -1075, 100), (-1885, -2245, 65), (-1125, 2300, -100), (-2295, -205, 0)];
-    self.catbox["main quest teleports"]["zmb_rave"][1] = [(-150, 1925, -90), (-2285, -1480, 65), (-1075, 2345, -100), (-810, 160, 0)];
-    self.catbox["extra teleports"]["zmb_rave"][1] = [(1145, 280, 0), (-725, -240, 0), (-1345, -555, 0), (-280, -1260, 0)];
+    self.catbox["main teleports"]["cp_rave"][1] = [(-750, 1085, 0), (-140, 1960, -90), (-1120, -490, 0), (-1585, -345, 0)];
+    self.catbox["map setup teleports"]["cp_rave"][1] = [(465, 1075, 0), (2250, -825, 100), (-1775, -2375, 65), (-1075, 2300, -100)];
+    self.catbox["mystery wheel teleports"]["cp_rave"][1] = [(2165, -1075, 100), (-1885, -2245, 65), (-1125, 2300, -100), (-2295, -205, 0)];
+    self.catbox["main quest teleports"]["cp_rave"][1] = [(-150, 1925, -90), (-2285, -1480, 65), (-1075, 2345, -100), (-810, 160, 0)];
+    self.catbox["extra teleports"]["cp_rave"][1] = [(1145, 280, 0), (-725, -240, 0), (-1345, -555, 0), (-280, -1260, 0)];
 
     // rave teleport angles
-    self.catbox["main teleports"]["zmb_rave"][2] = [180, 180, -90, 90];
-    self.catbox["map setup teleports"]["zmb_rave"][2] = [180, -90, 90, -90];
-    self.catbox["mystery wheel teleports"]["zmb_rave"][2] = [90, 45, -90, 0];
-    self.catbox["main quest teleports"]["zmb_rave"][2] = [90, 180, -90, -90];
-    self.catbox["extra teleports"]["zmb_rave"][2] = [0, 90, 90, 90];
+    self.catbox["main teleports"]["cp_rave"][2] = [180, 180, -90, 90];
+    self.catbox["map setup teleports"]["cp_rave"][2] = [180, -90, 90, -90];
+    self.catbox["mystery wheel teleports"]["cp_rave"][2] = [90, 45, -90, 0];
+    self.catbox["main quest teleports"]["cp_rave"][2] = [90, 180, -90, -90];
+    self.catbox["extra teleports"]["cp_rave"][2] = [0, 90, 90, 90];
 
     // disco teleport names
-    self.catbox["main teleports"]["zmb_disco"][0] = ["spawn", "pap room", "main portal"];
-    self.catbox["map setup teleports"]["zmb_disco"][0] = ["disco power", "roller rink power", "arcade power", "disco teleporter", "roller rink teleporter", "arcade teleporter"];
-    self.catbox["mystery wheel teleports"]["zmb_disco"][0] = ["arcade", "roller rink", "disco"];
-    self.catbox["main quest teleports"]["zmb_disco"][0] = ["mic stand", "boombox", "flyer", "dj booth"];
-    self.catbox["extra teleports"]["zmb_disco"][0] = ["pac-man part", "records", "guitar", "vip pass"];
+    self.catbox["main teleports"]["cp_disco"][0] = ["spawn", "pap room", "main portal"];
+    self.catbox["map setup teleports"]["cp_disco"][0] = ["disco power", "roller rink power", "arcade power", "disco teleporter", "roller rink teleporter", "arcade teleporter"];
+    self.catbox["mystery wheel teleports"]["cp_disco"][0] = ["arcade", "roller rink", "disco"];
+    self.catbox["main quest teleports"]["cp_disco"][0] = ["mic stand", "boombox", "flyer", "dj booth"];
+    self.catbox["extra teleports"]["cp_disco"][0] = ["pac-man part", "records", "guitar", "vip pass"];
 
     // disco teleport origins
-    self.catbox["main teleports"]["zmb_disco"][1] = [(580, 780, 0), (-275, 2525, -70), (-2000, -280, 0)];
-    self.catbox["map setup teleports"]["zmb_disco"][1] = [(1885, 685, 0), (85, -1190, 0), (-2400, -380, 0), (1785, 110, 0), (-240, -1650, 0), (-2455, -780, 0)];
-    self.catbox["mystery wheel teleports"]["zmb_disco"][1] = [(-2775, -835, 0), (-100, -1580, 0), (1885, 160, 0)];
-    self.catbox["main quest teleports"]["zmb_disco"][1] = [(-370, 630, 0), (195, -320, 0), (-2025, -745, 0), (-1720, -480, 0)];
-    self.catbox["extra teleports"]["zmb_disco"][1] = [(-2440, -190, 0), (-1140, -265, 0), (-1495, 920, 0), (-220, -2035, 0)];
+    self.catbox["main teleports"]["cp_disco"][1] = [(580, 780, 0), (-275, 2525, -70), (-2000, -280, 0)];
+    self.catbox["map setup teleports"]["cp_disco"][1] = [(1885, 685, 0), (85, -1190, 0), (-2400, -380, 0), (1785, 110, 0), (-240, -1650, 0), (-2455, -780, 0)];
+    self.catbox["mystery wheel teleports"]["cp_disco"][1] = [(-2775, -835, 0), (-100, -1580, 0), (1885, 160, 0)];
+    self.catbox["main quest teleports"]["cp_disco"][1] = [(-370, 630, 0), (195, -320, 0), (-2025, -745, 0), (-1720, -480, 0)];
+    self.catbox["extra teleports"]["cp_disco"][1] = [(-2440, -190, 0), (-1140, -265, 0), (-1495, 920, 0), (-220, -2035, 0)];
 
     // disco teleport angles
-    self.catbox["main teleports"]["zmb_disco"][2] = [180, 180, -90];
-    self.catbox["map setup teleports"]["zmb_disco"][2] = [0, 0, 90, 180, 90, 90];
-    self.catbox["mystery wheel teleports"]["zmb_disco"][2] = [90, 180, 180];
-    self.catbox["main quest teleports"]["zmb_disco"][2] = [180, -90, 180, 90];
-    self.catbox["extra teleports"]["zmb_disco"][2] = [0, 180, -90, -90];
+    self.catbox["main teleports"]["cp_disco"][2] = [180, 180, -90];
+    self.catbox["map setup teleports"]["cp_disco"][2] = [0, 0, 90, 180, 90, 90];
+    self.catbox["mystery wheel teleports"]["cp_disco"][2] = [90, 180, 180];
+    self.catbox["main quest teleports"]["cp_disco"][2] = [180, -90, 180, 90];
+    self.catbox["extra teleports"]["cp_disco"][2] = [0, 180, -90, -90];
 
     // town teleport names
-    self.catbox["main teleports"]["zmb_town"][0] = ["spawn", "pap room", "main portal"];
-    self.catbox["map setup teleports"]["zmb_town"][0] = ["police power", "dance club power", "diner power", "bowling power", "police teleporter", "dance club teleporter", "diner teleporter", "bowling teleporter"];
-    self.catbox["mystery wheel teleports"]["zmb_town"][0] = ["diner", "dance club", "bowling", "alley"];
-    self.catbox["main quest teleports"]["zmb_town"][0] = ["pack parts 1", "pack parts 2", "pack parts 3", "dj booth"];
-    self.catbox["extra teleports"]["zmb_town"][0] = ["alien fuse", "gold record", "cassette", "flyer"];
+    self.catbox["main teleports"]["cp_town"][0] = ["spawn", "pap room", "main portal"];
+    self.catbox["map setup teleports"]["cp_town"][0] = ["police power", "dance club power", "diner power", "bowling power", "police teleporter", "dance club teleporter", "diner teleporter", "bowling teleporter"];
+    self.catbox["mystery wheel teleports"]["cp_town"][0] = ["diner", "dance club", "bowling", "alley"];
+    self.catbox["main quest teleports"]["cp_town"][0] = ["pack parts 1", "pack parts 2", "pack parts 3", "dj booth"];
+    self.catbox["extra teleports"]["cp_town"][0] = ["alien fuse", "gold record", "cassette", "flyer"];
 
     // town teleport origins
-    self.catbox["main teleports"]["zmb_town"][1] = [(-1385, 420, 0), (245, -490, -90), (-1830, 70, 0)];
-    self.catbox["map setup teleports"]["zmb_town"][1] = [(315, 740, 0), (2140, -1235, 0), (-1905, 1030, 0), (-2075, -1385, 0), (550, 1040, 0), (2375, -1700, 0), (-2265, 970, 0), (-2340, -1790, 0)];
-    self.catbox["mystery wheel teleports"]["zmb_town"][1] = [(-2100, 1310, 0), (2210, -1415, 0), (-2615, -1715, 0), (-540, 2425, 0)];
-    self.catbox["main quest teleports"]["zmb_town"][1] = [(1485, -440, 0), (1640, -1195, 0), (-2600, -1650, 0), (-1335, 0, 0)];
-    self.catbox["extra teleports"]["zmb_town"][1] = [(1515, -1440, 0), (-865, -275, 0), (705, 250, 0), (-1230, -880, 0)];
+    self.catbox["main teleports"]["cp_town"][1] = [(-1385, 420, 0), (245, -490, -90), (-1830, 70, 0)];
+    self.catbox["map setup teleports"]["cp_town"][1] = [(315, 740, 0), (2140, -1235, 0), (-1905, 1030, 0), (-2075, -1385, 0), (550, 1040, 0), (2375, -1700, 0), (-2265, 970, 0), (-2340, -1790, 0)];
+    self.catbox["mystery wheel teleports"]["cp_town"][1] = [(-2100, 1310, 0), (2210, -1415, 0), (-2615, -1715, 0), (-540, 2425, 0)];
+    self.catbox["main quest teleports"]["cp_town"][1] = [(1485, -440, 0), (1640, -1195, 0), (-2600, -1650, 0), (-1335, 0, 0)];
+    self.catbox["extra teleports"]["cp_town"][1] = [(1515, -1440, 0), (-865, -275, 0), (705, 250, 0), (-1230, -880, 0)];
 
     // town teleport angles
-    self.catbox["main teleports"]["zmb_town"][2] = [90, -90, -90];
-    self.catbox["map setup teleports"]["zmb_town"][2] = [-90, 180, 90, 0, 90, 0, 0, -90];
-    self.catbox["mystery wheel teleports"]["zmb_town"][2] = [-90, 180, -90, 0];
-    self.catbox["main quest teleports"]["zmb_town"][2] = [0, 0, 90, -90];
-    self.catbox["extra teleports"]["zmb_town"][2] = [90, 180, -90, 0];
+    self.catbox["main teleports"]["cp_town"][2] = [90, -90, -90];
+    self.catbox["map setup teleports"]["cp_town"][2] = [-90, 180, 90, 0, 90, 0, 0, -90];
+    self.catbox["mystery wheel teleports"]["cp_town"][2] = [-90, 180, -90, 0];
+    self.catbox["main quest teleports"]["cp_town"][2] = [0, 0, 90, -90];
+    self.catbox["extra teleports"]["cp_town"][2] = [90, 180, -90, 0];
 
     // beast from beyond teleport names
     self.catbox["main teleports"]["cp_final"][0] = ["pap room","spawn","control room","theatre","afterlife arcade"];
@@ -1791,7 +1909,7 @@ initial_monitor()
                 if (self adsButtonPressed() && self isButtonPressed("+actionslot 1"))
                 {
                     if (is_true(self.option_interact))
-                        self sfx("entrance_sign_power_on_build");
+                        // self sfx("entrance_sign_power_on_build");
                         self void();
 
                     self open_menu();
@@ -1857,7 +1975,7 @@ initial_monitor()
                             if (is_true(self.structure[cursor]["is_array"]))
                                 self thread execute_function(self.structure[cursor]["function"], isdefined(self.structure[cursor]["array"]) ? self.structure[cursor]["array"][self.slider[menu + "_" + cursor]] : self.slider[menu + "_" + cursor], self.structure[cursor]["argument_1"], self.structure[cursor]["argument_2"], self.structure[cursor]["argument_3"]);
                             else
-                                self iprintln("use the ^2slider controls^7, not the jump button!");
+                                self iprintlnbold("use the ^2slider controls^7, not the jump button!");
                         }
                         else
                             self thread execute_function(self.structure[cursor]["function"], self.structure[cursor]["argument_1"], self.structure[cursor]["argument_2"], self.structure[cursor]["argument_3"]);
@@ -2733,7 +2851,7 @@ get_zombies()
 
 get_map_name()
 {
-    level.mapname = getDvar("mapname");
+    level.map_name = getDvar("mapname");
 }
 
 is_map(map)
@@ -2794,7 +2912,7 @@ check_weapon_class()
 
     for(;;)
     {
-        // self iprintln("^:" + self getcurrentweapon() + " | " + getweaponclass(self getcurrentweapon()));
+        // self iprintlnbold("^:" + self getcurrentweapon() + " | " + getweaponclass(self getcurrentweapon()));
         print(self getcurrentweapon() + " | " + getweaponclass(self getcurrentweapon()));
         wait 1;
     }
