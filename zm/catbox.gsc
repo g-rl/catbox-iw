@@ -37,12 +37,9 @@ init()
     if (is_true(level.is_debug) && getdvarint("is_debug") != 1)
     {
         setdvar("is_debug", 1);
-
-        if (getdvarint("is_debug") == 1)
-        {
-            setdvar("developer_script", 1);
-            map_restart(1);
-        }
+        setdvar("developer_script", 1);
+        map_restart(1);
+        print("ENABLING DEVELOPER SCRIPT / RESTARTING");
     }
 
     level thread on_player_connect();

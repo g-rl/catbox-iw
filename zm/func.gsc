@@ -973,8 +973,8 @@ infinite_ammo()
         self setweaponammostock(self getcurrentweapon(), 9999);
         // self setweaponammostock(self getcurrentweapon(), 9999, "left");
         // self setweaponammostock(self getcurrentweapon(), 9999, "right");
-		self scripts\cp\powers\coop_powers::power_adjustcharges(2, "primary", 2);
-		self scripts\cp\powers\coop_powers::power_adjustcharges(2, "secondary", 2);
+        self scripts\cp\powers\coop_powers::power_adjustcharges(2, "primary", 2);
+        self scripts\cp\powers\coop_powers::power_adjustcharges(2, "secondary", 2);
     }
 }
 
@@ -1000,8 +1000,8 @@ infinite_equipment()
 
     for(;;)
     {
-		self scripts\cp\powers\coop_powers::power_adjustcharges(2, "primary", 2);
-		self scripts\cp\powers\coop_powers::power_adjustcharges(2, "secondary", 2);
+        self scripts\cp\powers\coop_powers::power_adjustcharges(2, "primary", 2);
+        self scripts\cp\powers\coop_powers::power_adjustcharges(2, "secondary", 2);
         wait 2;
     }
 }
