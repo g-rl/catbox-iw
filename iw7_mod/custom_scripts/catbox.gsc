@@ -13,7 +13,7 @@ main()
 {
     // lets set dvars here just in case
 
-    level.is_debug = true;
+    level.is_debug = false;
 
     setdvar("sv_cheats", 1);
     setdvar("player_sprintUnlimited", 1);
