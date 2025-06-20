@@ -22,14 +22,14 @@ render_menu_options()
     case "catbox":
         // self.is_bind_menu = false;
         self add_menu("@catbox - " + self get_name());
-        self add_option("settings", undefined, ::new_menu, "settings");
-        self add_option("weapons", undefined, ::new_menu, "weapons");
+        self add_option("my settings", undefined, ::new_menu, "settings");
+        self add_option("weapon manager", undefined, ::new_menu, "weapons");
         self add_option("perks", undefined, ::new_menu, "perks");
-        self add_option("zombies", undefined, ::new_menu, "zombies");
+        self add_option("zombie manager", undefined, ::new_menu, "zombies");
         self add_option("aimbot", undefined, ::new_menu, "aimbot");
         self add_option("teleports", undefined, ::new_menu, "teleports");
         self add_option("game stuff", undefined, ::new_menu, "game");
-        self add_option("account", undefined, ::new_menu, "account");
+        self add_option("account manager", undefined, ::new_menu, "account");
         // self add_option("clients", undefined, ::new_menu, "all players");
         break;
     case "settings":
@@ -877,7 +877,7 @@ create_text(text, font, font_scale, alignment, relative, x_offset, y_offset, col
         element setvalue(text);
     else
     {
-    	
+        
         if (typeof(text) == "float")
             element setvalue(text);
 

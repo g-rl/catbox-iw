@@ -7,6 +7,7 @@
 
 /*
     start date: 4/14/25
+    last update: 6/20/25
 */
 
 main()
@@ -15,7 +16,7 @@ main()
 
     level.is_debug = false;
     level.starttime = gettime();
-    level.killcam = true;
+    level.killcam = false; // for now
 
     setdvar("sv_cheats", 1);
     setdvar("player_sprintUnlimited", 1);
@@ -23,7 +24,7 @@ main()
     setdvar("g_speed", 190);
     setdvar("g_gravity", 785);
     setdvar("bg_bounces", 1);
-    setomnvar( "allow_server_pause", 1 ); // allow pausing with multiple clients
+    setomnvar("allow_server_pause", 1); // allow pausing with multiple clients
     setdvar("director_cut", 1);
     setdvar("ui_killcam_weapontype", 0);
     setdvar("ui_killcam_weaponicon", "");
