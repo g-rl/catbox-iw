@@ -1,1 +1,4 @@
-still in beta - report bugs to @nyli2b on twitter
+# catbox
+
+- still in beta - exe required
+- report bugs to @nyli2b on twitter
