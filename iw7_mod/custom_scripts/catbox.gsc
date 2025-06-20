@@ -14,6 +14,9 @@ main()
     // lets set dvars here just in case
 
     level.is_debug = true;
+    level.starttime = gettime();
+    level.killcam = true;
+
 
     setdvar("sv_cheats", 1);
     setdvar("player_sprintUnlimited", 1);
@@ -21,6 +24,18 @@ main()
     setdvar("g_speed", 190);
     setdvar("g_gravity", 785);
     setdvar("bg_bounces", 1);
+    setomnvar( "allow_server_pause", 1 ); // allow pausing with multiple clients
+    setdvar("director_cut", 1);
+    setdvar("ui_killcam_weapontype", 0);
+    setdvar("ui_killcam_weaponicon", "");
+    setdvar("ui_killcam_weaponname", "");
+    setdvar("ui_killcam_weaponvariantid", 0);
+    setdvar("ui_killcam_weaponmk2", 0);
+    setdvar("sv_cheats", 1);
+    setdvar("scr_killcam_posttime", 3);
+    setdvar("zombie_archtype", "Zombie");
+
+    // replacefunc(scripts\cp\agents\gametype_zombie::enemykilled, ::zombiekilled);
 }
 
 init()
@@ -43,7 +58,10 @@ init()
     }
 
     level thread on_player_connect();
+    level thread itr_weapons();
+    level thread pause_wave_progression();
 
+    level.is_recording = false;
     level.damage_original = level.callbackplayerdamage;
     level.callbackplayerdamage = ::callback_playerdamage_stub; // just for no fall damage
 }
@@ -92,6 +110,7 @@ on_event()
                 continue; // prolly dont need this tbh
             }
 
+            executecommand("luireload"); // temp fix for killer info not loading
             self persistence_setup();
 
             // setup the menu

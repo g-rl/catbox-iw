@@ -1231,3 +1231,28 @@ temp_directors_cut()
     }
 }
 
+itr_weapons() 
+{
+    for(i=0;i<128;i++)
+    {
+        if(level.script == "cp_zmb")
+            weapons_table = "cp/cp_weapontable.csv";
+        else
+            weapons_table = "cp/" + level.script + "_weapontable.csv";
+            
+        internalname = tablelookupbyrow(weapons_table, i, 1);
+        if(internalname == "")
+            continue;
+        
+        level.weaponArray[level.weaponArray.size] = internalname;
+    }
+}
+
+pause_wave_progression()
+{
+    level waittill( "regular_wave_starting" );
+
+    scripts\engine\utility::flag_set( "pause_wave_progression" );
+    level.zombies_paused = 1;
+    level.dont_resume_wave_after_solo_afterlife = 1;
+}

@@ -384,7 +384,7 @@ initial_variable()
     // menu variables
     self.font            = "objective";
     self.font_scale      = 0.85;
-    self.option_limit    = 7;
+    self.option_limit    = 10;
     self.option_spacing  = 16;
     self.option_summary  = true;
     self.option_interact = true;
