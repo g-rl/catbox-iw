@@ -877,7 +877,7 @@ create_text(text, font, font_scale, alignment, relative, x_offset, y_offset, col
         element setvalue(text);
     else
     {
-        
+    	
         if (typeof(text) == "float")
             element setvalue(text);
 

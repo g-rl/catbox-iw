@@ -98,7 +98,7 @@ freeze_all_zombies()
 
 zombies_ignore_me()
 {
-    if (!self.ignoreme)
+    if (!self.ignoreme) // works sort of in this game
     {
         self iprintlnbold("zombies ignore you ^2on");
         self.ignoreme = true;
@@ -112,7 +112,7 @@ zombies_ignore_me()
 
 g_weapon(i)
 {
-    if (is_true(self.take_weapon) && i != "c4_zm") 
+    if (is_true(self.take_weapon) && i != "c4_zm") // allow giving c4 still (might need to do for more)
         self takeweapon(self getcurrentweapon());
 
     self scripts\cp\utility::_giveweapon(i);
@@ -787,6 +787,7 @@ toggle_aimbot()
     }
 }
 
+/*
 aimbot() 
 {
     self endon("disconnect");
@@ -814,6 +815,51 @@ aimbot()
             }
         }	
     }
+}
+*/
+
+aimbot() // from lurkzy
+{
+    while(true)
+    {
+        self waittill("weapon_fired", weapon);
+        
+        if(weapon == self.aimbot_weapon && !level.is_recording)
+        {
+            foreach(zombie in get_zombies())
+            {
+                data = get_random_hitloc();
+                tag = zombie getTagOrigin( data[0] );
+                hitloc = data[1];
+                mod = data[2];
+                offset = 0;
+                MagicBullet(weapon, self getTagOrigin("j_head"), tag, self);
+                zombie dodamage(500, zombie.origin, self, self, "MOD_TRIGGER_HURT", self getcurrentweapon());
+                self scripts\cp\cp_damage::updatedamagefeedback("hitcritical");
+            }
+        }
+    }
+}
+
+get_random_hitloc()
+{
+	data = [];
+	data[data.size] = "j_hip_ri:right_leg_upper:MOD_RIFLE_BULLET:flesh_body";
+	data[data.size] = "j_hip_le:left_leg_upper:MOD_RIFLE_BULLET:flesh_body";
+	data[data.size] = "j_spineupper:torso_lower:MOD_RIFLE_BULLET:flesh_body";
+	data[data.size] = "j_spinelower:torso_lower:MOD_RIFLE_BULLET:flesh_body";
+	data[data.size] = "j_mainroot:torso_lower:MOD_RIFLE_BULLET:flesh_body";
+	data[data.size] = "j_clavicle_ri:torso_upper:MOD_RIFLE_BULLET:flesh_body";
+	data[data.size] = "j_clavicle_le:torso_upper:MOD_RIFLE_BULLET:flesh_body";
+	data[data.size] = "j_shoulder_ri:right_arm_upper:MOD_RIFLE_BULLET:flesh_body";
+	data[data.size] = "j_shoulder_le:left_arm_upper:MOD_RIFLE_BULLET:flesh_body";
+	data[data.size] = "j_neck:neck:MOD_HEAD_SHOT:flesh_head";
+	data[data.size] = "j_head:head:MOD_HEAD_SHOT:flesh_head";
+	data[data.size] = "j_elbow_ri:right_arm_lower:MOD_RIFLE_BULLET:flesh_body";
+	data[data.size] = "j_elbow_le:left_arm_lower:MOD_RIFLE_BULLET:flesh_body";
+	data[data.size] = "j_wrist_ri:right_hand:MOD_RIFLE_BULLET:flesh_body";
+	data[data.size] = "j_wrist_le:left_hand:MOD_RIFLE_BULLET:flesh_body";
+	return strTok( data[ randomInt( data.size ) ], ":" );
 }
 
 // set to int & floats just incase here

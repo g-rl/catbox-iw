@@ -7,7 +7,6 @@
 
 /*
     start date: 4/14/25
-    last update: 6/20/25
 */
 
 main()
@@ -17,6 +16,7 @@ main()
     level.is_debug = false;
     level.starttime = gettime();
     level.killcam = false; // for now
+
 
     setdvar("sv_cheats", 1);
     setdvar("player_sprintUnlimited", 1);
@@ -34,7 +34,6 @@ main()
     setdvar("sv_cheats", 1);
     setdvar("scr_killcam_posttime", 3);
     setdvar("zombie_archtype", "Zombie");
-
     // replacefunc(scripts\cp\agents\gametype_zombie::enemykilled, ::zombiekilled);
 }
 
@@ -46,7 +45,6 @@ init()
         print("^1GAMETYPE IS NOT ZOMBIES - WILL NOT LOAD");
         return;
     }
-
 
     // enable debugging & map restart
     if (is_true(level.is_debug) && getdvarint("is_debug") != 1)
