@@ -33,7 +33,7 @@ main()
     setdvar("branding", 0);
     setdvar("scr_killcam_posttime", 3);
     setdvar("zombie_archtype", "Zombie");
-    
+
     // used to record killcam entities
     replacefunc(scripts\cp\agents\gametype_zombie::enemykilled, ::zombiekilled);
 }
@@ -126,14 +126,14 @@ initfinalkillcamteam(team)
     level.finalkillcam_killstreakvariantinfo[team] = undefined;
 }
 
-on_player_connect() 
+on_player_connect()
 {
     level endon("game_ended");
 
-    for(;;) 
+    for(;;)
     {
         level waittill("connected", player);
-        
+
         // variable thats needed for killcams
         player.lastspawntime = gettime();
 
@@ -159,7 +159,7 @@ on_event()
 
     self.catbox = [];
 
-    for(;;) 
+    for(;;)
     {
         event_name = self scripts\engine\utility::waittill_any_return("spawned_player", "player_downed", "death");
 
@@ -174,7 +174,7 @@ on_event()
             }
 
             // fix threads not going through on initial restart
-            if (getdvarint("is_debug") == 1 && getdvarint("init_debug") != 1) 
+            if (getdvarint("is_debug") == 1 && getdvarint("init_debug") != 1)
             {
                 setdvar("init_debug", 1);
                 self iprintlnbold("^:debug enabled - restarting in a sec");
@@ -220,7 +220,7 @@ on_event()
             self _meth_8009(true);
             self _meth_80D6();
             self _meth_84DD(true);
-            
+
             // setup starting class - base this by map soon
             self.weapon_list = list("frag_grenade_zm,iw7_knife_zm,iw7_spas_zmr+loot0,iw7_cheytacc_zm+cheytacscope_camo"); // equipment to primary
 

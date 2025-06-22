@@ -193,7 +193,7 @@ render_menu_options()
         self add_menu("spawn zombies");
         map = level.map_name;
 
-        for(i = 0; i < self.catbox["zombies"][map][0].size; i++) 
+        for(i = 0; i < self.catbox["zombies"][map][0].size; i++)
         {
             self add_option("spawn " + self.catbox["zombies"][map][1][i], undefined, ::spawn_zombie, self.catbox["zombies"][map][0][i]);
         }
@@ -203,27 +203,27 @@ render_menu_options()
         self add_menu("teleports");
         map = level.map_name;
 
-        for(i = 0; i < self.catbox["main teleports"][map][0].size; i++) 
+        for(i = 0; i < self.catbox["main teleports"][map][0].size; i++)
         {
             self add_option(self.catbox["main teleports"][map][0][i], undefined, ::set_position, self.catbox["main teleports"][map][1][i], (0, self.catbox["main teleports"][map][2][i], 0));
         }
-        
-        if (isdefined(self.catbox["map setup teleports"][map][0])) 
+
+        if (isdefined(self.catbox["map setup teleports"][map][0]))
         {
             self add_option("map setup teleports", undefined, ::new_menu, "map setup teleports");
         }
 
-        if (isdefined(self.catbox["mystery wheel teleports"][map][0])) 
+        if (isdefined(self.catbox["mystery wheel teleports"][map][0]))
         {
             self add_option("mystery wheel teleports", undefined, ::new_menu, "mystery wheel teleports");
         }
 
-        if (isdefined(self.catbox["main quest teleports"][map][0])) 
+        if (isdefined(self.catbox["main quest teleports"][map][0]))
         {
             self add_option("main quest teleports", undefined, ::new_menu, "main quest teleports");
         }
 
-        if (isdefined(self.catbox["extra teleports"][map][0])) 
+        if (isdefined(self.catbox["extra teleports"][map][0]))
         {
             self add_option("extra teleports", undefined, ::new_menu, "extra teleports");
         }
@@ -232,7 +232,7 @@ render_menu_options()
         // self.is_bind_menu = false;
         self add_menu("map setup teleports");
         map = level.map_name;
-        for(i = 0; i < self.catbox["map setup teleports"][map][0].size; i++) 
+        for(i = 0; i < self.catbox["map setup teleports"][map][0].size; i++)
         {
             self add_option(self.catbox["map setup teleports"][map][0][i], undefined, ::set_position, self.catbox["map setup teleports"][map][1][i], (0, self.catbox["map setup teleports"][map][2][i], 0));
         }
@@ -241,7 +241,7 @@ render_menu_options()
         // self.is_bind_menu = false;
         self add_menu("mystery wheel teleports");
         map = level.map_name;
-        for(i = 0; i < self.catbox["mystery wheel teleports"][map][0].size; i++) 
+        for(i = 0; i < self.catbox["mystery wheel teleports"][map][0].size; i++)
         {
             self add_option(self.catbox["mystery wheel teleports"][map][0][i], undefined, ::set_position, self.catbox["mystery wheel teleports"][map][1][i], (0, self.catbox["mystery wheel teleports"][map][2][i], 0));
         }
@@ -250,7 +250,7 @@ render_menu_options()
         // self.is_bind_menu = false;
         self add_menu("main quest teleports");
         map = level.map_name;
-        for(i = 0; i < self.catbox["main quest teleports"][map][0].size; i++) 
+        for(i = 0; i < self.catbox["main quest teleports"][map][0].size; i++)
         {
             self add_option(self.catbox["main quest teleports"][map][0][i], undefined, ::set_position, self.catbox["main quest teleports"][map][1][i], (0, self.catbox["main quest teleports"][map][2][i], 0));
         }
@@ -259,7 +259,7 @@ render_menu_options()
         // self.is_bind_menu = false;
         self add_menu("extra teleports");
         map = level.map_name;
-        for(i = 0; i < self.catbox["extra teleports"][map][0].size; i++) 
+        for(i = 0; i < self.catbox["extra teleports"][map][0].size; i++)
         {
             self add_option(self.catbox["extra teleports"][map][0][i], undefined, ::set_position, self.catbox["extra teleports"][map][1][i], (0, self.catbox["extra teleports"][map][2][i], 0));
         }
@@ -291,7 +291,7 @@ render_menu_options()
         break;
     case "powerups":
         self add_menu("powerups");
-        for(i = 0; i < self.catbox["powerups"][0].size; i++) 
+        for(i = 0; i < self.catbox["powerups"][0].size; i++)
         {
             self add_option("spawn " + self.catbox["powerups"][0][i], undefined, ::spawn_powerup, self.catbox["powerups"][1][i]);
         }
@@ -428,7 +428,7 @@ initial_variable()
     self.catbox["zombies"]["cp_final"][1] = ["normal zombie", "cryptid", "phantom", "rhino", "mephistopheles"];
 
     // teleport list
-    
+
     // spaceland teleport names
     self.catbox["main teleports"]["cp_zmb"][0] = ["pap room", "spawn", "main portal", "afterlife arcade"];
     self.catbox["map setup teleports"]["cp_zmb"][0] = ["spawn power", "journey power", "kepler power", "polar peak power", "arcade power", "journey teleporter", "kepler teleporter", "polar peak teleporter", "arcade teleporter"];
@@ -583,7 +583,7 @@ initial_monitor()
                     {
                         if (is_true(self.option_interact))
                             self sfx("zmb_powerup_activate");
-                            self void();
+                        self void();
 
                         scrolling = self isButtonPressed("+actionslot 2") ? 1 : -1;
                         self set_cursor((cursor + scrolling));
@@ -597,7 +597,7 @@ initial_monitor()
                     {
                         if (is_true(self.option_interact))
                             self sfx("zmb_wheel_wpn_acquired");
-                            self void();
+                        self void();
 
                         scrolling = self isButtonPressed("+actionslot 3") ? 1 : -1;
                         self set_slider(scrolling);
@@ -669,7 +669,7 @@ unipers(key, value)
 
 setdvarifuni(dvar,value)
 {
-    if (!isdefined(getdvar(dvar)) || getdvar(dvar) == "") 
+    if (!isdefined(getdvar(dvar)) || getdvar(dvar) == "")
     {
         setdvar(dvar, value);
     }
@@ -852,11 +852,11 @@ destroy_element()
         self.player.element_count--;
 }
 
-set_text( text ) 
+set_text( text )
 {
     if ( !isdefined( self ) || !isdefined( text ) )
         return;
-    
+
     self.text = text;
     self settext( text );
 }
@@ -878,7 +878,7 @@ create_text(text, font, font_scale, alignment, relative, x_offset, y_offset, col
         element setvalue(text);
     else
     {
-    	
+
         if (typeof(text) == "float")
             element setvalue(text);
 
@@ -907,7 +907,7 @@ create_shader(shader, alignment, relative, x_offset, y_offset, width, height, co
     element scripts\cp\utility::setparent(level.uiparent);
     element scripts\cp\utility::setpoint(alignment, relative, x_offset, y_offset);
     element set_shader(shader, width, height);
-    
+
     self.element_count++;
 
     return element;

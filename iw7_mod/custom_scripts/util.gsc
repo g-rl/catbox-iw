@@ -8,7 +8,7 @@
 
 // utility stuff here
 
-callback_playerdamage_stub(var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11) 
+callback_playerdamage_stub(var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11)
 {
     if (isdefined(var_4) && var_4 == "MOD_FALLING")
         return;
@@ -36,7 +36,7 @@ perstovector(pers)
     return (float(keys[0]),float(keys[1]),float(keys[2]));
 }
 
-list(key) 
+list(key)
 {
     output = StrTok(key, ",");
     return output;
@@ -66,7 +66,7 @@ actually_alive() // errors lol
     return isalive(self) && !toggle(self.lastStand);
 }
 
-toggle(variable) 
+toggle(variable)
 {
     return isdefined(variable) && variable;
 }
@@ -92,7 +92,7 @@ is_map(map)
 }
 
 // have to use this because ActionSlotButtonOnePressed etc does not exist!
-button_monitor(button) 
+button_monitor(button)
 {
     self endon("disconnect");
 
@@ -113,25 +113,25 @@ isButtonPressed(button)
     return self.button_pressed[button];
 }
 
-monitor_buttons() 
+monitor_buttons()
 {
     if (isdefined(self.now_monitoring))
         return;
 
     self.now_monitoring = true;
-    
+
     if (!isdefined(self.button_actions))
         self.button_actions = ["+sprint", "+melee", "+melee_zoom", "+melee_breath", "+stance", "+gostand", "weapnext", "+actionslot 1", "+actionslot 2", "+actionslot 3", "+actionslot 4", "+forward", "+back", "+moveleft", "+moveright"];
     if (!isdefined(self.button_pressed))
         self.button_pressed = [];
-    
+
     foreach (button in self.button_actions)
         self thread button_monitor(button);
 }
 
 create_notify()
 {
-    foreach(value in StrTok("+sprint,+actionslot 1,+actionslot 2,+actionslot 3,+actionslot 4,+frag,+smoke,+melee,+melee_zoom,+stance,+gostand,+switchseat,+usereload", ",")) 
+    foreach(value in StrTok("+sprint,+actionslot 1,+actionslot 2,+actionslot 3,+actionslot 4,+frag,+smoke,+melee,+melee_zoom,+stance,+gostand,+switchseat,+usereload", ","))
     {
         self NotifyOnPlayerCommand(value, value);
     }
@@ -139,10 +139,10 @@ create_notify()
 
 can_upgrade_hook(param_00,param_01)
 {
-	return 1;
+    return 1;
 }
 
-bullet_trace() 
+bullet_trace()
 {
     point = bullettrace(self geteye(), self geteye() + anglestoforward(self getplayerangles()) * 1000000, 0, self)["position"];
     return point;
@@ -186,7 +186,7 @@ zombiekilled( einflictor, attacker, iDamage, sMeansOfDeath, sWeapon, var_5, var_
 {
     if (level.is_recording)
         return;
-    
+
     self.deathtime = gettime(); // idk
     killcamentity = get_killcam_entity(attacker, einflictor, sWeapon);
     killcamentityindex = -1;
@@ -290,73 +290,73 @@ get_killcam_entity( var_0, var_1, var_2 )
 
     switch ( var_2 )
     {
-        case "hashima_missiles_mp":
-        case "sentry_shock_grenade_mp":
-        case "jackal_fast_cannon_mp":
-        case "sentry_shock_missile_mp":
-        case "bombproj_mp":
-        case "sentry_shock_mp":
-        case "heli_pilot_turret_mp":
-        case "iw7_c8landing_mp":
-        case "super_trophy_mp":
-        case "micro_turret_gun_mp":
-        case "bouncingbetty_mp":
-        case "player_trophy_system_mp":
-        case "trophy_mp":
-        case "power_exploding_drone_mp":
-        case "trip_mine_mp":
-        case "bomb_site_mp":
-            return scripts\engine\utility::ter_op( isdefined( var_1.killcament ), var_1.killcament, var_1 );
-        case "remote_tank_projectile_mp":
-        case "jackal_turret_mp":
-        case "hind_missile_mp":
-        case "hind_bomb_mp":
-        case "aamissile_projectile_mp":
-        case "jackal_cannon_mp":
-            if ( isdefined( var_1.vehicle_fired_from ) && isdefined( var_1.vehicle_fired_from.killcament ) )
-                return var_1.vehicle_fired_from.killcament;
-            else if ( isdefined( var_1.vehicle_fired_from ) )
-                return var_1.vehicle_fired_from;
+    case "hashima_missiles_mp":
+    case "sentry_shock_grenade_mp":
+    case "jackal_fast_cannon_mp":
+    case "sentry_shock_missile_mp":
+    case "bombproj_mp":
+    case "sentry_shock_mp":
+    case "heli_pilot_turret_mp":
+    case "iw7_c8landing_mp":
+    case "super_trophy_mp":
+    case "micro_turret_gun_mp":
+    case "bouncingbetty_mp":
+    case "player_trophy_system_mp":
+    case "trophy_mp":
+    case "power_exploding_drone_mp":
+    case "trip_mine_mp":
+    case "bomb_site_mp":
+        return scripts\engine\utility::ter_op( isdefined( var_1.killcament ), var_1.killcament, var_1 );
+    case "remote_tank_projectile_mp":
+    case "jackal_turret_mp":
+    case "hind_missile_mp":
+    case "hind_bomb_mp":
+    case "aamissile_projectile_mp":
+    case "jackal_cannon_mp":
+        if ( isdefined( var_1.vehicle_fired_from ) && isdefined( var_1.vehicle_fired_from.killcament ) )
+            return var_1.vehicle_fired_from.killcament;
+        else if ( isdefined( var_1.vehicle_fired_from ) )
+            return var_1.vehicle_fired_from;
 
-            break;
-        case "iw7_minigun_c8_mp":
-        case "iw7_chargeshot_c8_mp":
-        case "iw7_c8offhandshield_mp":
-            if ( isdefined( var_0 ) && isdefined( var_0._id_4BE1 ) && var_0._id_4BE1 == "MANUAL" )
-                return undefined;
-
-            break;
-        case "ball_drone_projectile_mp":
-        case "ball_drone_gun_mp":
-            if ( isplayer( var_0 ) && isdefined( var_0.balldrone ) && isdefined( var_0.balldrone.turret ) && isdefined( var_0.balldrone.turret.killcament ) )
-                return var_0.balldrone.turret.killcament;
-
-            break;
-        case "shockproj_mp":
-            if ( isdefined( var_0._id_B7AA.killcament ) )
-                return var_0._id_B7AA.killcament;
-
-            break;
-        case "artillery_mp":
-        case "none":
-            if ( isdefined( var_1.targetname ) && var_1.targetname == "care_package" || isdefined( var_1.killcament ) && ( var_1.classname == "script_brushmodel" || var_1.classname == "trigger_multiple" || var_1.classname == "script_model" ) )
-                return var_1.killcament;
-
-            break;
-        case "switch_blade_child_mp":
-        case "drone_hive_projectile_mp":
-            if ( isdefined( var_0.extraeffectkillcam ) )
-                return var_0.extraeffectkillcam;
-            else
-                return undefined;
-        case "remote_turret_mp":
-        case "ugv_turret_mp":
-        case "remotemissile_projectile_mp":
-        case "osprey_player_minigun_mp":
-        case "minijackal_assault_mp":
-        case "minijackal_strike_mp":
-        case "venomproj_mp":
+        break;
+    case "iw7_minigun_c8_mp":
+    case "iw7_chargeshot_c8_mp":
+    case "iw7_c8offhandshield_mp":
+        if ( isdefined( var_0 ) && isdefined( var_0._id_4BE1 ) && var_0._id_4BE1 == "MANUAL" )
             return undefined;
+
+        break;
+    case "ball_drone_projectile_mp":
+    case "ball_drone_gun_mp":
+        if ( isplayer( var_0 ) && isdefined( var_0.balldrone ) && isdefined( var_0.balldrone.turret ) && isdefined( var_0.balldrone.turret.killcament ) )
+            return var_0.balldrone.turret.killcament;
+
+        break;
+    case "shockproj_mp":
+        if ( isdefined( var_0._id_B7AA.killcament ) )
+            return var_0._id_B7AA.killcament;
+
+        break;
+    case "artillery_mp":
+    case "none":
+        if ( isdefined( var_1.targetname ) && var_1.targetname == "care_package" || isdefined( var_1.killcament ) && ( var_1.classname == "script_brushmodel" || var_1.classname == "trigger_multiple" || var_1.classname == "script_model" ) )
+            return var_1.killcament;
+
+        break;
+    case "switch_blade_child_mp":
+    case "drone_hive_projectile_mp":
+        if ( isdefined( var_0.extraeffectkillcam ) )
+            return var_0.extraeffectkillcam;
+        else
+            return undefined;
+    case "remote_turret_mp":
+    case "ugv_turret_mp":
+    case "remotemissile_projectile_mp":
+    case "osprey_player_minigun_mp":
+    case "minijackal_assault_mp":
+    case "minijackal_strike_mp":
+    case "venomproj_mp":
+        return undefined;
     }
 
     if ( scripts\engine\utility::isdestructibleweapon( var_2 ))
@@ -661,7 +661,7 @@ killcam( var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, v
     // if ( !level.showingfinalkillcam )
     //     thread _id_13715( var_10 );
     // else
-        self notify( "showing_final_killcam" );
+    self notify( "showing_final_killcam" );
 
     thread _id_635D();
     waittillkillcamover();
@@ -725,7 +725,7 @@ setup_weapon_image( sWeapon )
     rootname = get_root_name( sWeapon );
     variant_id = scripts\cp\utility::get_weapon_variant_id( self, sWeapon );
     variant_ref = lookupvariantref( rootname, variant_id );
-    
+
     if(variant_id == -1)
         setdvar("ui_killcam_weaponvariantid", 0);
     else if(getdvar("ui_killcam_weaponmk2"))
@@ -737,7 +737,7 @@ setup_weapon_image( sWeapon )
         weaponicon = tablelookup( "mp/loot/weapon/" + rootname + ".csv", 1, variant_ref, 11 );
     else
         weaponicon = tablelookup( "mp/statsTable.csv", 3, rootname, 6 );
-    
+
     setdvar("ui_killcam_weaponicon", weaponicon);
 }
 
@@ -752,7 +752,7 @@ setup_weapon_display( sWeapon )
         weaponname = tablelookup( "mp/loot/weapon/" + rootname + ".csv", 1, variant_ref, 10 );
     else
         weaponname = tablelookup( "mp/statsTable.csv", 3, rootname, 3 );
-    
+
     setdvar("ui_killcam_weaponname", weaponname);
 }
 
@@ -776,7 +776,7 @@ _id_A639( var_0 )
 
     if ( !level.gameended )
         self notify("yar");
-        //scripts\mp\utility::clearlowermessage( "kc_info" );
+    //scripts\mp\utility::clearlowermessage( "kc_info" );
 
     //thread scripts\mp\spectating::setspectatepermissions();
     self notify( "killcam_ended" );
@@ -906,7 +906,7 @@ _id_F8A0( var_0, var_1 )
 doFinalKillCamFX( var_0, var_1, var_2, var_3, var_4 )
 {
     self endon( "killcam_ended" );
-    
+
     wait self.archivetime - 5.65;
 
     soundsettimescalefactor( "music_lr", 0 );
