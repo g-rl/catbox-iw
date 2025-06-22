@@ -5,9 +5,6 @@
 #include custom_scripts\menu;
 #include custom_scripts\catbox;
 
-
-// utility stuff here
-
 callback_playerdamage_stub(var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11)
 {
     if (isdefined(var_4) && var_4 == "MOD_FALLING")
@@ -21,13 +18,7 @@ is_valid_weapon(weapon)
     if (!isdefined (weapon))
         return false;
 
-    weapon_class = getweaponclass(weapon);
-    if (weapon_class == "weapon_sniper")
-    {
-        return true;
-    }
-
-    return false;
+    return (getweaponclass(weapon) == "weapon_sniper");
 }
 
 perstovector(pers)
@@ -53,12 +44,7 @@ randomize(key)
 // gotta use a wrapper because scripts\engine\utility::istrue makes the game not load for some reason
 is_true(variable)
 {
-    if (isdefined(variable) && variable)
-    {
-        return true;
-    }
-
-    return false;
+    return isdefined(variable) && variable;
 }
 
 actually_alive() // errors lol
@@ -68,6 +54,7 @@ actually_alive() // errors lol
 
 toggle(variable)
 {
+    // isn't this just is_true? -mikey
     return isdefined(variable) && variable;
 }
 
@@ -135,11 +122,6 @@ create_notify()
     {
         self NotifyOnPlayerCommand(value, value);
     }
-}
-
-can_upgrade_hook(param_00,param_01)
-{
-    return 1;
 }
 
 bullet_trace()
