@@ -673,6 +673,13 @@ hide_ui()
     setdvar("cg_draw2d", !self.hide_ui);
 }
 
+toggle_branding() 
+{
+    self.branding = !toggle(self.branding);
+    setdvar("branding", !self.branding);
+}
+
+
 toggle_frozen_box()
 {
     if (!isdefined(self.frozen_box)) self.frozen_box = false;

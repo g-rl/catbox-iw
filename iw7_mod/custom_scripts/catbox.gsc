@@ -32,6 +32,7 @@ main()
     setdvar("ui_killcam_weaponvariantid", 0);
     setdvar("ui_killcam_weaponmk2", 0);
     setdvar("sv_cheats", 1);
+    setdvar("branding", 0);
     setdvar("scr_killcam_posttime", 3);
     setdvar("zombie_archtype", "Zombie");
     // replacefunc(scripts\cp\agents\gametype_zombie::enemykilled, ::zombiekilled);
@@ -185,6 +186,7 @@ persistence_setup()
     self.aimbot_range = 500;
     self.aimbot_delay = 0;
     self.outline_color = 2;
+    self.branding = false;
 
     self unipers("bouncecount", "0");
 

@@ -277,6 +277,7 @@ render_menu_options()
         // add_increment(text, summary, function, start, minimum, maximum, increment, argument_1, argument_2, argument_3)
         self add_menu("game");
         self add_option("powerups", undefined, ::new_menu, "powerups");
+        self add_toggle("toggle branding", undefined, ::toggle_branding, self.branding);
         self add_increment("timescale", increment_controls, ::set_timescale, getdvarfloat("timescale"), 0.25, 10, 0.25);
         self add_increment("gravity", increment_controls, ::set_gravity, getdvarint("g_gravity"), 100, 800, 25);
         self add_increment("bounces", increment_controls, ::set_bounces, getdvarint("bg_bounces"), 0, 1, 1);
