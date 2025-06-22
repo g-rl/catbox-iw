@@ -187,36 +187,36 @@ zombiekilled( einflictor, attacker, iDamage, sMeansOfDeath, sWeapon, var_5, var_
     attacker childthread get_weapon_ismk2(sWeapon);
     attacker childthread setup_weapon_display(sWeapon);
 
-    thread recordfinalkillcam( 5, self, attacker, attacker getentitynumber(), attacker, killcamentityindex, killcamentitystarttime, false, sWeapon, deathtimeoffset, psoffsettime, sMeansOfDeath );
+    thread recordfinalkillcam( 5, self, attacker, attacker getentitynumber(), einflictor, killcamentityindex, killcamentitystarttime, false, sWeapon, deathtimeoffset, psoffsettime, sMeansOfDeath );
 }
 
 // team is a team or guid
-recordfinalkillcam_team(team, var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11)
+recordfinalkillcam_team(team, delay, victim, attacker, attackerNum, eInflictor, killCamEntityIndex, killCamEntityStartTime, stickstovictim, sWeapon, deathTimeOffset, psOffsetTime, sMeansOfDeath)
 {
-    level.finalkillcam_delay[team] = var_0;
-    level.finalkillcam_victim[team] = var_1;
-    level.finalkillcam_victim_deathtime[team] = var_1.deathtime;
-    level.finalkillcam_attacker[team] = var_2;
-    level.finalkillcam_attackernum[team] = var_3;
-    level.finalKillCam_inflictor[team] = var_4;
-    level.finalkillcam_killcamentityindex[team] = var_5;
-    level.finalkillcam_killcamentitystarttime[team] = var_6;
-    level.finalkillcam_killcamentitystickstovictim[team] = var_7;
-    level.finalkillcam_sweapon[team] = var_8;
-    level.finalkillcam_deathtimeoffset[team] = var_9;
-    level.finalkillcam_psoffsettime[team] = var_10;
+    level.finalkillcam_delay[team] = delay;
+    level.finalkillcam_victim[team] = victim;
+    level.finalkillcam_victim_deathtime[team] = victim.deathtime;
+    level.finalkillcam_attacker[team] = attacker;
+    level.finalkillcam_attackernum[team] = attackerNum;
+    level.finalKillCam_inflictor[team] = eInflictor;
+    level.finalkillcam_killcamentityindex[team] = killCamEntityIndex;
+    level.finalkillcam_killcamentitystarttime[team] = killCamEntityStartTime;
+    level.finalkillcam_killcamentitystickstovictim[team] = stickstovictim;
+    level.finalkillcam_sweapon[team] = sWeapon;
+    level.finalkillcam_deathtimeoffset[team] = deathTimeOffset;
+    level.finalkillcam_psoffsettime[team] = psOffsetTime;
     level.finalkillcam_timerecorded[team] = getsecondspassed();
     level.finalkillcam_timegameended[team] = getsecondspassed();
-    level.finalkillcam_smeansofdeath[team] = var_11;
-    level.finalkillcam_attackers[team] = var_1.attackers;
-    level.finalkillcam_attackerdata[team] = var_1.attackerdata;
+    level.finalkillcam_smeansofdeath[team] = sMeansOfDeath;
+    level.finalkillcam_attackers[team] = victim.attackers;
+    level.finalkillcam_attackerdata[team] = victim.attackerdata;
     level.finalkillcam_attackerperks[team] = [];
-    level.finalkillcam_killstreakvariantinfo[team] = var_1.killsteakvariantattackerinfo;
+    level.finalkillcam_killstreakvariantinfo[team] = victim.killsteakvariantattackerinfo;
 
-    if ( isdefined( var_4 ) && isagent( var_4 ) )
+    if ( isdefined( eInflictor ) && isagent( eInflictor ) )
     {
-        level.finalKillCam_inflictor_agent_type[team] = var_4.agent_type;
-        level.finalKillCam_inflictor_lastSpawnTime[team] = var_4.lastspawntime;
+        level.finalKillCam_inflictor_agent_type[team] = eInflictor.agent_type;
+        level.finalKillCam_inflictor_lastSpawnTime[team] = eInflictor.lastspawntime;
     }
     else
     {
@@ -225,20 +225,21 @@ recordfinalkillcam_team(team, var_0, var_1, var_2, var_3, var_4, var_5, var_6, v
     }
 }
 
-recordfinalkillcam( var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11 )
+// thread recordfinalkillcam( 5, self, attacker, attacker getentitynumber(), attacker, killcamentityindex, killcamentitystarttime, false, sWeapon, deathtimeoffset, psoffsettime, sMeansOfDeath );
+recordfinalkillcam( delay, victim, attacker, attackerNum, eInflictor, killCamEntityIndex, killCamEntityStartTime, stickstovictim, sWeapon, deathTimeOffset, psOffsetTime, sMeansOfDeath )
 {
-    if ( level.teambased && isdefined( var_2.team ) )
+    if ( level.teambased && isdefined( attacker.team ) )
     {
-        recordfinalkillcam_team(var_2.team, var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11);
+        recordfinalkillcam_team(attacker.team, delay, victim, attacker, attackerNum, eInflictor, killCamEntityIndex, killCamEntityStartTime, stickstovictim, sWeapon, deathTimeOffset, psOffsetTime, sMeansOfDeath);
     }
     else if ( !level.teambased )
     {
-        recordfinalkillcam_team(var_2.guid, var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11);
+        recordfinalkillcam_team(attacker.guid, delay, victim, attacker, attackerNum, eInflictor, killCamEntityIndex, killCamEntityStartTime, stickstovictim, sWeapon, deathTimeOffset, psOffsetTime, sMeansOfDeath);
     }
 
-    recordfinalkillcam_team("none", var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11);
+    recordfinalkillcam_team("none", delay, victim, attacker, attackerNum, eInflictor, killCamEntityIndex, killCamEntityStartTime, stickstovictim, sWeapon, deathTimeOffset, psOffsetTime, sMeansOfDeath);
 
-    level.finalkillcam_winner = (isdefined(var_2.team)) ? var_2.team : "none";
+    level.finalkillcam_winner = (isdefined(attacker.team)) ? attacker.team : "none";
 
     level.is_recording = true;
     wait 4.5;
@@ -262,15 +263,15 @@ getsecondspassed()
     return gettimepassed() / 1000;
 }
 
-get_killcam_entity( var_0, var_1, var_2 )
+get_killcam_entity( attacker, eInflictor, sWeapon )
 {
-    if ( !isdefined( var_0 ) || !isdefined( var_1 ) || var_0 == var_1 && !isagent( var_0 ) )
+    if ( !isdefined( attacker ) || !isdefined( eInflictor ) || attacker == eInflictor && !isagent( attacker ) )
         return undefined;
 
-    if ( var_1.israllytrap )
-        return var_1.killcament;
+    if ( eInflictor.israllytrap )
+        return eInflictor.killcament;
 
-    switch ( var_2 )
+    switch ( sWeapon )
     {
     case "hashima_missiles_mp":
     case "sentry_shock_grenade_mp":
@@ -288,47 +289,47 @@ get_killcam_entity( var_0, var_1, var_2 )
     case "power_exploding_drone_mp":
     case "trip_mine_mp":
     case "bomb_site_mp":
-        return scripts\engine\utility::ter_op( isdefined( var_1.killcament ), var_1.killcament, var_1 );
+        return scripts\engine\utility::ter_op( isdefined( eInflictor.killcament ), eInflictor.killcament, eInflictor );
     case "remote_tank_projectile_mp":
     case "jackal_turret_mp":
     case "hind_missile_mp":
     case "hind_bomb_mp":
     case "aamissile_projectile_mp":
     case "jackal_cannon_mp":
-        if ( isdefined( var_1.vehicle_fired_from ) && isdefined( var_1.vehicle_fired_from.killcament ) )
-            return var_1.vehicle_fired_from.killcament;
-        else if ( isdefined( var_1.vehicle_fired_from ) )
-            return var_1.vehicle_fired_from;
+        if ( isdefined( eInflictor.vehicle_fired_from ) && isdefined( eInflictor.vehicle_fired_from.killcament ) )
+            return eInflictor.vehicle_fired_from.killcament;
+        else if ( isdefined( eInflictor.vehicle_fired_from ) )
+            return eInflictor.vehicle_fired_from;
 
         break;
     case "iw7_minigun_c8_mp":
     case "iw7_chargeshot_c8_mp":
     case "iw7_c8offhandshield_mp":
-        if ( isdefined( var_0 ) && isdefined( var_0._id_4BE1 ) && var_0._id_4BE1 == "MANUAL" )
+        if ( isdefined( attacker ) && isdefined( attacker._id_4BE1 ) && attacker._id_4BE1 == "MANUAL" )
             return undefined;
 
         break;
     case "ball_drone_projectile_mp":
     case "ball_drone_gun_mp":
-        if ( isplayer( var_0 ) && isdefined( var_0.balldrone ) && isdefined( var_0.balldrone.turret ) && isdefined( var_0.balldrone.turret.killcament ) )
-            return var_0.balldrone.turret.killcament;
+        if ( isplayer( attacker ) && isdefined( attacker.balldrone ) && isdefined( attacker.balldrone.turret ) && isdefined( attacker.balldrone.turret.killcament ) )
+            return attacker.balldrone.turret.killcament;
 
         break;
     case "shockproj_mp":
-        if ( isdefined( var_0._id_B7AA.killcament ) )
-            return var_0._id_B7AA.killcament;
+        if ( isdefined( attacker._id_B7AA.killcament ) )
+            return attacker._id_B7AA.killcament;
 
         break;
     case "artillery_mp":
     case "none":
-        if ( isdefined( var_1.targetname ) && var_1.targetname == "care_package" || isdefined( var_1.killcament ) && ( var_1.classname == "script_brushmodel" || var_1.classname == "trigger_multiple" || var_1.classname == "script_model" ) )
-            return var_1.killcament;
+        if ( isdefined( eInflictor.targetname ) && eInflictor.targetname == "care_package" || isdefined( eInflictor.killcament ) && ( eInflictor.classname == "script_brushmodel" || eInflictor.classname == "trigger_multiple" || eInflictor.classname == "script_model" ) )
+            return eInflictor.killcament;
 
         break;
     case "switch_blade_child_mp":
     case "drone_hive_projectile_mp":
-        if ( isdefined( var_0.extraeffectkillcam ) )
-            return var_0.extraeffectkillcam;
+        if ( isdefined( attacker.extraeffectkillcam ) )
+            return attacker.extraeffectkillcam;
         else
             return undefined;
     case "remote_turret_mp":
@@ -341,18 +342,18 @@ get_killcam_entity( var_0, var_1, var_2 )
         return undefined;
     }
 
-    if ( scripts\engine\utility::isdestructibleweapon( var_2 ))
+    if ( scripts\engine\utility::isdestructibleweapon( sWeapon ))
     {
-        if ( isdefined( var_1.killcament ) && !var_0 _id_24ED() )
-            return var_1.killcament;
+        if ( isdefined( eInflictor.killcament ) && !attacker attackerInRemoteKillstreak() )
+            return eInflictor.killcament;
         else
             return undefined;
     }
 
-    return var_1;
+    return eInflictor;
 }
 
-_id_24ED()
+attackerInRemoteKillstreak()
 {
     if ( !isdefined( self ) )
         return 0;
@@ -454,15 +455,15 @@ do_final_killcam()
     level thread do_final_killcam();
 }
 
-anyplayersinkillcam()
+anyPlayersInKillcam()
 {
-    foreach ( var_1 in level.players )
-    {
-        if ( isdefined( var_1.killcam ) )
-            return 1;
-    }
-
-    return 0;
+	foreach ( player in level.players )
+	{
+		if ( IsDefined( player.killcam ) )
+			return true;
+	}
+	
+	return false;
 }
 
 killcam( var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, maxtime, var_12, var_13, var_14, var_15, var_16 )
