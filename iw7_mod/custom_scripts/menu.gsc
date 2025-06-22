@@ -444,7 +444,7 @@ initial_variable()
     self.catbox["extra teleports"]["cp_zmb"][1] = [(475, -265, 0), (-1800, -2825, 360), (-535, -3265, 390), (-757, -2415, 560), (-2775, 1565, 365), (-3045, 730, 365), (-1230, 1625, 225), (2425, -106, -196), (2495, -295, -196), (1920, -635, -196), (100, -1115, -252)];
 
     // spaceland teleport angles
-    self.catbox["main teleports"]["cp_zmb"][2] = [90, -90, -90];
+    self.catbox["main teleports"]["cp_zmb"][2] = [90, -90, -90, -90];
     self.catbox["map setup teleports"]["cp_zmb"][2] = [-90, 0, -90, 90, 180, 0, -45, 20, -90];
     self.catbox["mystery wheel teleports"]["cp_zmb"][2] = [180, 90, 0, -90, 0, -45, -90, 0];
     self.catbox["main quest teleports"]["cp_zmb"][2] = [0, 0, 90, 45, 0, 90, 160, 90, -90, 0, -90, 0];

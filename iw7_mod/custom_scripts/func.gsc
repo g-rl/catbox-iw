@@ -1286,9 +1286,11 @@ temp_directors_cut()
 
 itr_weapons() 
 {
+    level.weaponArray = [];
+
     for(i=0;i<128;i++)
     {
-        if(level.script == "cp_zmb")
+        if (level.script == "cp_zmb")
             weapons_table = "cp/cp_weapontable.csv";
         else
             weapons_table = "cp/" + level.script + "_weapontable.csv";
