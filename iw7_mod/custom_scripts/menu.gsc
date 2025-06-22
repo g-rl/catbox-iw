@@ -870,7 +870,9 @@ create_text(text, font, font_scale, alignment, relative, x_offset, y_offset, col
     element.player         = self;
     element.archived       = self should_archive();
     element.foreground     = true;
+
     element.hidewheninmenu = true;
+    element.hidewhenindemo = true;
 
     element scripts\cp\utility::setpoint(alignment, relative, x_offset, y_offset);
 
@@ -902,7 +904,9 @@ create_shader(shader, alignment, relative, x_offset, y_offset, width, height, co
     element.archived       = self should_archive();
     element.foreground     = true;
     element.hidden         = false;
+
     element.hidewheninmenu = true;
+    element.hidewhenindemo = true;
 
     element scripts\cp\utility::setparent(level.uiparent);
     element scripts\cp\utility::setpoint(alignment, relative, x_offset, y_offset);
