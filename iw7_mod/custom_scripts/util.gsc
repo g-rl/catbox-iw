@@ -7,6 +7,75 @@
 
 
 // utility stuff here
+overflow_fix_init() 
+{
+    level.strings = [];
+
+    level.overflowElem = scripts\cp\utility::createfontstring("default", 0.8, true); // 3 arg is server
+    level.overflowElem _settext("overflow");
+    level.overflowElem.alpha = 0;
+
+    level thread overflow_fix_monitor();
+}
+
+overflow_fix_monitor() 
+{
+    level endon("game_ended");
+    while(true) 
+    {
+        level waittill("string_added");
+        if(level.strings.size >= 45) 
+        {
+            level.overflowElem ClearAllTextAfterHudElem();
+            level.strings = [];
+            level notify("overflow_fixed");
+        }
+        wait 0.05;
+    }
+}
+
+_settext(text) 
+{
+    self.string = text;
+    self settext(text);
+    self thread fix_string();
+    self add_string(text);
+}
+
+add_string(string) 
+{
+    level.strings[level.strings.size] = string;
+    level notify("string_added");
+}
+
+fix_string() 
+{
+    self notify("new_string");
+    self endon("new_string");
+    while(isdefined(self)) 
+    {
+        level waittill("overflow_fixed");
+        self _settext(self.string);
+    }
+}
+
+monitor_introscreen_over()
+{
+    scripts\engine\utility::flag_wait( "introscreen_over" );
+    // thread set_interactions_cost( 0 );
+}
+
+set_interactions_cost( cost )
+{
+    var_3 = getarraykeys( level.interactions );
+    for ( var_4 = 0; var_4 < var_3.size; var_4++ )
+    {
+        if ( isdefined( level.interactions[var_3[var_4]].cost ) )
+            level.interactions[var_3[var_4]].cost = cost;
+
+        scripts\engine\utility::waitframe();
+    }
+}
 
 callback_playerdamage_stub(var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11) 
 {
@@ -125,8 +194,8 @@ monitor_buttons()
     if (!isdefined(self.button_pressed))
         self.button_pressed = [];
     
-    for(a=0 ; a < self.button_actions.size ; a++)
-        self thread button_monitor(self.button_actions[a]);
+    foreach (button in self.button_actions)
+        self thread button_monitor(button);
 }
 
 create_notify()
@@ -184,94 +253,105 @@ hook_false()
 
 zombiekilled( einflictor, attacker, iDamage, sMeansOfDeath, sWeapon, var_5, var_6, psoffsettime, deathtimeoffset )
 {
-    if(level.is_recording)
+    if (level.is_recording)
         return;
 
-    thread _id_5853();
-    
-    self.deathtime = gettime();
-    killcamentity = _id_7F32(attacker, einflictor, sWeapon);
-    killcamentitystarttime = killcamentity.birthtime;
+    level.deathtime[self getentitynumber()] = gettime();
+
+    killcamentity = get_killcam_entity(attacker, einflictor, sWeapon);
+    killcamentityindex = -1;
+    killcamentitystarttime = 0; //killcamentity.birthtime;
+
+    if (isdefined(killcamentity))
+    {
+        killcamentityindex = killcamentity getentitynumber();
+        if (isdefined(killcamentity.starttime))
+        {
+            killcamentitystarttime = killcamentity.starttime;
+        }
+    }
 
     attacker childthread setup_weapon_image(sWeapon);
     attacker childthread get_weapon_ismk2(sWeapon);
     attacker childthread setup_weapon_display(sWeapon);
 
-    thread recordfinalkillcam( 5, self, attacker, attacker getentitynumber(), attacker, killcamentity getentitynumber(), killcamentitystarttime, false, sWeapon, deathtimeoffset, psoffsettime, sMeansOfDeath );
+    thread recordfinalkillcam( 5, self, attacker, attacker getentitynumber(), attacker, killcamentityindex, killcamentitystarttime, false, sWeapon, deathtimeoffset, psoffsettime, sMeansOfDeath );
 }
 
-recordfinalkillcam( var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11 )
+recordfinalkillcam( delay, var_1, attacker, var_3, eInflictor, var_5, var_6, var_7, var_8, var_9, var_10, var_11 )
 {
-    if ( level.teambased && isdefined( var_2.team ) )
+    if ( level.teambased && isdefined( attacker.team ) )
     {
-        level.finalkillcam_delay[var_2.team] = var_0;
-        level.finalkillcam_victim[var_2.team] = var_1;
-        level.finalkillcam_attacker[var_2.team] = var_2;
-        level.finalkillcam_attackernum[var_2.team] = var_3;
-        level._id_6C64[var_2.team] = var_4;
-        level.finalkillcam_killcamentityindex[var_2.team] = var_5;
-        level.finalkillcam_killcamentitystarttime[var_2.team] = var_6;
-        level.finalkillcam_killcamentitystickstovictim[var_2.team] = var_7;
-        level.finalkillcam_sweapon[var_2.team] = var_8;
-        level.finalkillcam_deathtimeoffset[var_2.team] = var_9;
-        level.finalkillcam_psoffsettime[var_2.team] = var_10;
-        level.finalkillcam_timerecorded[var_2.team] = getsecondspassed();
-        level.finalkillcam_timegameended[var_2.team] = getsecondspassed();
-        level.finalkillcam_smeansofdeath[var_2.team] = var_11;
-        level.finalkillcam_attackers[var_2.team] = var_1.attackers;
-        level.finalkillcam_attackerdata[var_2.team] = var_1.attackerdata;
-        level.finalkillcam_attackerperks[var_2.team] = [];
-        level.finalkillcam_killstreakvariantinfo[var_2.team] = var_1.killsteakvariantattackerinfo;
+        level.finalkillcam_delay[attacker.team] = delay;
+        level.finalkillcam_victim[attacker.team] = var_1;
+        level.finalkillcam_attacker[attacker.team] = attacker;
+        level.finalkillcam_attackernum[attacker.team] = var_3;
+        level.finalKillCam_inflictor[attacker.team] = eInflictor;
+        level.finalkillcam_killcamentityindex[attacker.team] = var_5;
+        level.finalkillcam_killcamentitystarttime[attacker.team] = var_6;
+        level.finalkillcam_killcamentitystickstovictim[attacker.team] = var_7;
+        level.finalkillcam_sweapon[attacker.team] = var_8;
+        level.finalkillcam_deathtimeoffset[attacker.team] = var_9;
+        level.finalkillcam_psoffsettime[attacker.team] = var_10;
+        level.finalkillcam_timerecorded[attacker.team] = getsecondspassed();
+        level.finalkillcam_timegameended[attacker.team] = getsecondspassed();
+        level.finalkillcam_smeansofdeath[attacker.team] = var_11;
+        level.finalkillcam_attackers[attacker.team] = var_1.attackers;
+        level.finalkillcam_attackerdata[attacker.team] = var_1.attackerdata;
+        level.finalkillcam_attackerperks[attacker.team] = [];
+        level.finalkillcam_killstreakvariantinfo[attacker.team] = var_1.killsteakvariantattackerinfo;
 
-        if ( isdefined( var_4 ) && isagent( var_4 ) )
+        if ( isdefined( eInflictor ) && isagent( eInflictor ) )
         {
-            level._id_6C65[var_2.team] = var_4.agent_type;
-            level._id_6C66[var_2.team] = var_4.lastspawntime;
+            level.finalKillCam_inflictor_agent_type[attacker.team] = eInflictor.agent_type;
+            level.finalKillCam_inflictor_lastSpawnTime[attacker.team] = eInflictor.lastspawntime;
         }
         else
         {
-            level._id_6C65[var_2.team] = undefined;
-            level._id_6C66[var_2.team] = undefined;
+            level.finalKillCam_inflictor_agent_type[attacker.team] = undefined;
+            level.finalKillCam_inflictor_lastSpawnTime[attacker.team] = undefined;
         }
     }
     else if ( !level.teambased )
     {
-        level.finalkillcam_delay[var_2.guid] = var_0;
-        level.finalkillcam_victim[var_2.guid] = var_1;
-        level.finalkillcam_attacker[var_2.guid] = var_2;
-        level.finalkillcam_attackernum[var_2.guid] = var_3;
-        level._id_6C64[var_2.guid] = var_4;
-        level.finalkillcam_killcamentityindex[var_2.guid] = var_5;
-        level.finalkillcam_killcamentitystarttime[var_2.guid] = var_6;
-        level.finalkillcam_killcamentitystickstovictim[var_2.guid] = var_7;
-        level.finalkillcam_sweapon[var_2.guid] = var_8;
-        level.finalkillcam_deathtimeoffset[var_2.guid] = var_9;
-        level.finalkillcam_psoffsettime[var_2.guid] = var_10;
-        level.finalkillcam_timerecorded[var_2.guid] = getsecondspassed();
-        level.finalkillcam_timegameended[var_2.guid] = getsecondspassed();
-        level.finalkillcam_smeansofdeath[var_2.guid] = var_11;
-        level.finalkillcam_attackers[var_2.guid] = var_1.attackers;
-        level.finalkillcam_attackerdata[var_2.guid] = var_1.attackerdata;
-        level.finalkillcam_attackerperks[var_2.guid] = var_2.pers["loadoutPerks"];
-        level.finalkillcam_killstreakvariantinfo[var_2.guid] = var_1.killsteakvariantattackerinfo;
+        level.finalkillcam_delay[attacker.guid] = delay;
+        level.finalkillcam_victim[attacker.guid] = var_1;
+        level.finalkillcam_attacker[attacker.guid] = attacker;
+        level.finalkillcam_attackernum[attacker.guid] = var_3;
+        level.finalKillCam_inflictor[attacker.guid] = eInflictor;
+        level.finalkillcam_killcamentityindex[attacker.guid] = var_5;
+        level.finalkillcam_killcamentitystarttime[attacker.guid] = var_6;
+        level.finalkillcam_killcamentitystickstovictim[attacker.guid] = var_7;
+        level.finalkillcam_sweapon[attacker.guid] = var_8;
+        level.finalkillcam_deathtimeoffset[attacker.guid] = var_9;
+        level.finalkillcam_psoffsettime[attacker.guid] = var_10;
+        level.finalkillcam_timerecorded[attacker.guid] = getsecondspassed();
+        level.finalkillcam_timegameended[attacker.guid] = getsecondspassed();
+        level.finalkillcam_smeansofdeath[attacker.guid] = var_11;
+        level.finalkillcam_attackers[attacker.guid] = var_1.attackers;
+        level.finalkillcam_attackerdata[attacker.guid] = var_1.attackerdata;
+        level.finalkillcam_attackerperks[attacker.guid] = attacker.pers["loadoutPerks"];
+        level.finalkillcam_killstreakvariantinfo[attacker.guid] = var_1.killsteakvariantattackerinfo;
 
-        if ( isdefined( var_4 ) && isagent( var_4 ) )
+        if ( isdefined( eInflictor ) && isagent( eInflictor ) )
         {
-            level._id_6C65[var_2.guid] = var_4.agent_type;
-            level._id_6C66[var_2.guid] = var_4.lastspawntime;
+            level.finalKillCam_inflictor_agent_type[attacker.guid] = eInflictor.agent_type;
+            level.finalKillCam_inflictor_lastSpawnTime[attacker.guid] = eInflictor.lastspawntime;
         }
         else
         {
-            level._id_6C65[var_2.guid] = undefined;
-            level._id_6C66[var_2.guid] = undefined;
+            level.finalKillCam_inflictor_agent_type[attacker.guid] = undefined;
+            level.finalKillCam_inflictor_lastSpawnTime[attacker.guid] = undefined;
         }
     }
 
-    level.finalkillcam_delay["none"] = var_0;
+    //level.finalkillcam_winner = (isdefined(attacker.team)) ? attacker.team : "none";
+
+    level.finalkillcam_delay["none"] = delay;
     level.finalkillcam_victim["none"] = var_1;
-    level.finalkillcam_attacker["none"] = var_2;
+    level.finalkillcam_attacker["none"] = attacker;
     level.finalkillcam_attackernum["none"] = var_3;
-    level._id_6C64["none"] = var_4;
+    level.finalKillCam_inflictor["none"] = eInflictor;
     level.finalkillcam_killcamentityindex["none"] = var_5;
     level.finalkillcam_killcamentitystarttime["none"] = var_6;
     level.finalkillcam_killcamentitystickstovictim["none"] = var_7;
@@ -284,18 +364,18 @@ recordfinalkillcam( var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_
     level.finalkillcam_smeansofdeath["none"] = var_11;
     level.finalkillcam_attackers["none"] = var_1.attackers;
     level.finalkillcam_attackerdata["none"] = var_1.attackerdata;
-    level.finalkillcam_attackerperks["none"] = var_2.pers["loadoutPerks"];
+    level.finalkillcam_attackerperks["none"] = attacker.pers["loadoutPerks"];
     level.finalkillcam_killstreakvariantinfo["none"] = var_1.killsteakvariantattackerinfo;
 
-    if ( isdefined( var_4 ) && isagent( var_4 ) )
+    if ( isdefined( eInflictor ) && isagent( eInflictor ) )
     {
-        level._id_6C65["none"] = var_4.agent_type;
-        level._id_6C66["none"] = var_4.lastspawntime;
+        level.finalKillCam_inflictor_agent_type["none"] = eInflictor.agent_type;
+        level.finalKillCam_inflictor_lastSpawnTime["none"] = eInflictor.lastspawntime;
     }
     else
     {
-        level._id_6C65["none"] = undefined;
-        level._id_6C66["none"] = undefined;
+        level.finalKillCam_inflictor_agent_type["none"] = undefined;
+        level.finalKillCam_inflictor_lastSpawnTime["none"] = undefined;
     }
 
     level.is_recording = true;
@@ -320,7 +400,7 @@ getsecondspassed()
     return gettimepassed() / 1000;
 }
 
-_id_7F32( var_0, var_1, var_2 )
+get_killcam_entity( var_0, var_1, var_2 )
 {
     if ( !isdefined( var_0 ) || !isdefined( var_1 ) || var_0 == var_1 && !isagent( var_0 ) )
         return undefined;
@@ -435,9 +515,10 @@ _id_24ED()
     return 0;
 }
 
-_id_5853()
+do_final_killcam()
 {   
     level waittill( "round_end_finished" );
+
     level.showingfinalkillcam = 1;
     var_0 = "none";
 
@@ -448,9 +529,9 @@ _id_5853()
     var_2 = level.finalkillcam_victim[var_0];
     var_3 = level.finalkillcam_attacker[var_0];
     var_4 = level.finalkillcam_attackernum[var_0];
-    var_5 = level._id_6C64[var_0];
-    var_6 = level._id_6C65[var_0];
-    var_7 = level._id_6C66[var_0];
+    var_5 = level.finalKillCam_inflictor[var_0];
+    var_6 = level.finalKillCam_inflictor_agent_type[var_0];
+    var_7 = level.finalKillCam_inflictor_lastSpawnTime[var_0];
     var_8 = level.finalkillcam_killcamentityindex[var_0];
     var_9 = level.finalkillcam_killcamentitystarttime[var_0];
     var_10 = level.finalkillcam_killcamentitystickstovictim[var_0];
@@ -482,19 +563,23 @@ _id_5853()
         return;
     }
 
-    var_24 = spawnstruct();
-    var_24.agent_type = var_6;
-    var_24.lastspawntime = var_7;
-    var_25 = ( gettime() - var_2.deathtime ) / 1000;
-    print(var_25);
+    inflictorAgentInfo = spawnstruct();
+    inflictorAgentInfo.agent_type = var_6;
+    inflictorAgentInfo.lastspawntime = var_7;
+
+    deathtime = level.deathtime[var_2 getentitynumber()];
+    level.deathtime[var_2 getentitynumber()] = undefined;
+    var_25 = ( gettime() - deathtime ) / 1000;
 
     foreach ( var_27 in level.players )
     {
         var_27 visionsetnakedforplayer( "", 0 );
         var_27.killcamentitylookat = var_2 getentitynumber();
-        var_27 thread killcam( var_5, var_24, var_4, var_8, var_9, var_2 getentitynumber(), var_10, var_11, var_25, var_13, 0, 12, var_3, var_2, var_16, var_19, var_20 );
+        var_27 thread killcam( var_5, inflictorAgentInfo, var_4, var_8, var_9, var_2 getentitynumber(), var_10, var_11, var_25, var_13, 0, 12, var_3, var_2, var_16, var_19, var_20 );
     }
 
+    // idk why but using this broken code fixes LUI problems
+    print(level._id_B4A7);
     wait( 0.15 + level._id_B4A7 );
 
     while ( anyplayersinkillcam() )
@@ -516,7 +601,7 @@ anyplayersinkillcam()
     return 0;
 }
 
-killcam( var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11, var_12, var_13, var_14, var_15, var_16 )
+killcam( var_0, inflictorAgentInfo, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, var_10, var_11, attacker, var_13, var_14, var_15, var_16 )
 {
     self endon( "disconnect" );
     self endon( "spawned" );
@@ -529,12 +614,12 @@ killcam( var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, v
 
         foreach ( var_18 in level.players )
         {
-            self playlocalsound( "final_killcam_in" );
+            //self playlocalsound( "final_killcam_in" );
             self _meth_82C2( "killcam", "mix" );
         }
     }
 
-    if ( var_2 < 0 || !isdefined( var_12 ) )
+    if ( var_2 < 0 || !isdefined( attacker ) )
         return;
 
     level._id_C23C++;
@@ -586,7 +671,7 @@ killcam( var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, v
 
     if ( getdvar( "scr_killcam_posttime" ) == "" )
     {
-        if ( isdefined( var_0 ) && var_0 == var_12 )
+        if ( isdefined( var_0 ) && var_0 == attacker )
             var_22 = 3.5;
         else
             var_22 = 2;
@@ -599,10 +684,10 @@ killcam( var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, v
             var_22 = 0.05;
     }
 
-    if ( var_2 < 0 || !isdefined( var_12 ) )
+    if ( var_2 < 0 || !isdefined( attacker ) )
         return;
 
-    var_23 = _id_127CF( var_0, var_1, var_12, var_13, var_3, var_21, var_22, var_8, var_11 );
+    var_23 = _id_127CF( var_0, inflictorAgentInfo, attacker, var_13, var_3, var_21, var_22, var_8, var_11 );
 
     if ( !isdefined( var_23 ) )
         return;
@@ -612,24 +697,26 @@ killcam( var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, v
 
     var_24 = getdvarint( "scr_player_forcerespawn" );
 
+    /*
     if ( var_10 && !level.gameended || isdefined( self ) && isdefined( self.battlebuddy ) && !level.gameended || var_24 == 0 && !level.gameended )
         self setclientomnvar( "ui_killcam_text", "skip" );
     else if ( !level.gameended )
         self setclientomnvar( "ui_killcam_text", "respawn" );
     else
         self setclientomnvar( "ui_killcam_text", "none" );
+    */
 
     self notify( "begin_killcam", gettime() );
     scripts\cp\utility::updatesessionstate( "spectator" );
     self.spectatekillcam = 1;
 
-    if ( isagent( var_12 ) || isagent( var_0 ) )
+    if ( isagent( attacker ) || isagent( var_0 ) )
     {
         var_2 = var_13 getentitynumber();
         var_9 = var_9 - 25;
     }
 
-    self.forcespectatorclient = var_12 getentitynumber();
+    self.forcespectatorclient = attacker getentitynumber();
     self.killcamentity = -1;
 
     thread _id_F76B( var_3, var_23.killcamoffset, var_4, var_5, var_6 );
@@ -675,7 +762,7 @@ killcam( var_0, var_1, var_2, var_3, var_4, var_5, var_6, var_7, var_8, var_9, v
         return;
     }
 
-    thread _id_5854( var_23, self.killcamentity, var_12, var_13, var_14 );
+    thread _id_5854( var_23, self.killcamentity, attacker, var_13, var_14 );
 
     self.killcam = 1;
 
@@ -735,10 +822,20 @@ get_weapon_ismk2( sWeapon )
     setdvar("ui_killcam_weaponmk2", scripts\cp\utility::ismark2weapon( scripts\cp\utility::get_weapon_variant_id( self, sWeapon ) ));
 }
 
+get_root_name(sweapon)
+{
+    rootname = scripts\cp\utility::getweaponrootname(sweapon);
+    if (rootname == "iw7_cheytacc")
+    {
+        rootname = "iw7_cheytac";
+    }
+    return rootname;
+}
+
 setup_weapon_image( sWeapon )
 {
     weaponicon = "white";
-    rootname = scripts\cp\utility::getweaponrootname( sWeapon );
+    rootname = get_root_name( sWeapon );
     variant_id = scripts\cp\utility::get_weapon_variant_id( self, sWeapon );
     variant_ref = lookupvariantref( rootname, variant_id );
     
@@ -760,7 +857,7 @@ setup_weapon_image( sWeapon )
 setup_weapon_display( sWeapon )
 {
     weaponname = "MISSING";
-    rootname = scripts\cp\utility::getweaponrootname( sWeapon );
+    rootname = get_root_name( sWeapon );
     variant_id = getdvarint("ui_killcam_weaponvariantid");
     variant_ref = lookupvariantref( rootname, variant_id );
 
@@ -891,7 +988,7 @@ waittillkillcamover()
     if ( level.showingfinalkillcam )
     {
         setglobalsoundcontext( "atmosphere", "", 0.5 );
-        self playlocalsound( "final_killcam_out" );
+        //self playlocalsound( "final_killcam_out" );
     }
 }
 

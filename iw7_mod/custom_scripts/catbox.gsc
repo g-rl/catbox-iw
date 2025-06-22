@@ -14,9 +14,9 @@ main()
     // lets set dvars here just in case
 
     level.is_debug = false;
-    level.starttime = gettime();
-    level.killcam = false; // for now
 
+    level.starttime = gettime();
+    level.killcam = true;
 
     setdvar("sv_cheats", 1);
     setdvar("player_sprintUnlimited", 1);
@@ -35,7 +35,84 @@ main()
     setdvar("branding", 0);
     setdvar("scr_killcam_posttime", 3);
     setdvar("zombie_archtype", "Zombie");
-    // replacefunc(scripts\cp\agents\gametype_zombie::enemykilled, ::zombiekilled);
+
+    replacefunc(scripts\cp\agents\gametype_zombie::enemykilled, ::zombiekilled);
+
+    // enable debugging & map restart
+    /*
+    if (is_true(level.is_debug) && getdvarint("is_debug") != 1)
+    {
+        setdvar("is_debug", 1);
+        setdvar("developer_script", 1);
+        map_restart(1);
+        print("ENABLING DEVELOPER SCRIPT / RESTARTING");
+    }
+    */
+
+    level.weaponArray = [];
+    level.is_recording = false;
+    game["frozen"] = false;
+
+    level.meph_fight_started = true;
+
+    // killcam vars
+    level.finalkillcam_delay = [];
+    level.finalkillcam_victim = [];
+    level.finalkillcam_attacker = [];
+    level.finalkillcam_attackernum = [];
+    level.finalKillCam_inflictor = [];
+    level.finalKillCam_inflictor_agent_type = [];
+    level.finalKillCam_inflictor_lastSpawnTime = [];
+    level.finalkillcam_killcamentityindex = [];
+    level.finalkillcam_killcamentitystarttime = [];
+    level.finalkillcam_killcamentitystickstovictim = [];
+    level.finalkillcam_sweapon = [];
+    level._id_6C62 = [];
+    level.finalkillcam_psoffsettime = [];
+    level.finalkillcam_timerecorded = [];
+    level.finalkillcam_timegameended = [];
+    level.finalkillcam_smeansofdeath = [];
+    level.finalkillcam_attackers = [];
+    level.finalkillcam_attackerdata = [];
+    level.finalkillcam_attackerperks = [];
+    level.finalkillcam_killstreakvariantinfo = [];
+
+    initfinalkillcamteam("none");
+    initfinalkillcamteam("axis");
+    initfinalkillcamteam("allies");
+
+    level.deathtime = [];
+
+    level.finalkillcam_winner = undefined;
+    level.recordfinalkillcam = 1;
+
+    level._id_C23C = 0; // idek but used
+
+    level thread custom_scripts\util::do_final_killcam();
+}
+
+initfinalkillcamteam(team)
+{
+    level.finalkillcam_delay[team] = undefined;
+    level.finalkillcam_victim[team] = undefined;
+    level.finalkillcam_attacker[team] = undefined;
+    level.finalkillcam_attackernum[team] = undefined;
+    level.finalKillCam_inflictor[team] = undefined;
+    level.finalKillCam_inflictor_agent_type[team] = undefined;
+    level.finalKillCam_inflictor_lastSpawnTime[team] = undefined;
+    level.finalkillcam_killcamentityindex[team] = undefined;
+    level.finalkillcam_killcamentitystarttime[team] = undefined;
+    level.finalkillcam_killcamentitystickstovictim[team] = undefined;
+    level.finalkillcam_sweapon[team] = undefined;
+    level._id_6C62[team] = undefined;
+    level.finalkillcam_psoffsettime[team] = undefined;
+    level.finalkillcam_timerecorded[team] = undefined;
+    level.finalkillcam_timegameended[team] = undefined;
+    level.finalkillcam_smeansofdeath[team] = undefined;
+    level.finalkillcam_attackers[team] = undefined;
+    level.finalkillcam_attackerdata[team] = undefined;
+    level.finalkillcam_attackerperks[team] = undefined;
+    level.finalkillcam_killstreakvariantinfo[team] = undefined;
 }
 
 init()
@@ -56,13 +133,14 @@ init()
         print("ENABLING DEVELOPER SCRIPT / RESTARTING");
     }
 
+    // level.damage_original = level.callbackplayerdamage;
+    // level.callbackplayerdamage = ::callback_playerdamage_stub; // just for no fall damage
+
     level thread on_player_connect();
     level thread itr_weapons();
     level thread pause_wave_progression();
-
-    level.is_recording = false;
-    level.damage_original = level.callbackplayerdamage;
-    level.callbackplayerdamage = ::callback_playerdamage_stub; // just for no fall damage
+    level thread monitor_introscreen_over();
+    level thread overflow_fix_init();
 }
 
 on_player_connect() 
@@ -72,9 +150,22 @@ on_player_connect()
     for(;;) 
     {
         level waittill("connected", player);
-        
+
+        // re-add variable thats needed
+        player.lastspawntime = gettime();
+
+        done_once = false;
+
         get_map_name();
         player thread on_event();
+
+        if (!done_once)
+        {
+            setDvar("timescale", 1000);
+            wait 2;
+            setDvar("timescale", 1);
+            done_once = true;
+        }
     }
 }
 
@@ -84,7 +175,7 @@ on_event()
     level endon("game_ended");
 
     self.catbox = [];
-
+    
     for(;;) 
     {
         event_name = self scripts\engine\utility::waittill_any_return("spawned_player", "player_downed", "death");
