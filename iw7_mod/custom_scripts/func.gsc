@@ -56,7 +56,7 @@ check_weapon_class()
     }
 }
 
-add_points(value) 
+add_points(value)
 {
     self setplayerdata("cp", "alienSession", "currency", value);
 }
@@ -83,7 +83,7 @@ freeze_all_zombies()
         {
             zombie freezecontrols(true);
         }
-    } 
+    }
     else
     {
         self iprintlnbold("zombies ^1unfrozen");
@@ -161,7 +161,7 @@ save_pos_bind()
     for(;;)
     {
         self waittill("+actionslot 2");
-        
+
         if (self GetStance() == "crouch")
         {
             self thread save_position();
@@ -177,7 +177,7 @@ load_pos_bind()
     for(;;)
     {
         self waittill("+actionslot 1");
-        
+
         if (self GetStance() == "crouch")
         {
             self thread load_position();
@@ -185,8 +185,8 @@ load_pos_bind()
     }
 }
 
-// no clipping - fucks up sometimes and doesnt let you unlink ..  
-no_clip() 
+// no clipping - fucks up sometimes and doesnt let you unlink ..
+no_clip()
 {
     self endon("nomoreufo");
     b = 0;
@@ -205,12 +205,12 @@ no_clip()
                 b = 0;
                 self notify("stop_noclip");
                 self unlink();
-            } 
+            }
         }
     }
 }
 
-go_no_clip() 
+go_no_clip()
 {
     self endon("stop_noclip");
 
@@ -239,7 +239,7 @@ unlink_player() // cheeky fix for when no clip breaks lol
 }
 
 toggle_take_weapon()
-{   
+{
     self.take_weapon = !toggle(self.take_weapon);
     /*
     if (!isdefined(self.take_weapon)) self.take_weapon = false;
@@ -268,7 +268,7 @@ set_zombie_perk(perk)
     if (!scripts\cp\utility::has_zombie_perk(perk))
     {
         self thread give_zombie_perk(perk);
-    } 
+    }
     else
     {
         self thread take_zombie_perk(perk);
@@ -291,7 +291,7 @@ perkaholic()
     foreach(perk in level.perks)
     {
         // give all perks except mule kick
-        if (perk != "perk_machine_more") 
+        if (perk != "perk_machine_more")
         {
             self thread set_zombie_perk(perk);
         }
@@ -302,52 +302,52 @@ get_perk_display_name(perk)
 {
     switch(perk)
     {
-        case "perk_machine_revive":
-            return "Up n Atoms";
-        case "perk_machine_tough":
-            return "Tuff Enuff";
-        case "perk_machine_run":
-            return "Racing Stripes";
-        case "perk_machine_flash":
-            return "Quickies";
-        case "perk_machine_more":
-            return "Mule Munchies";
-        case "perk_machine_rat_a_tat":
-            return "Bang Bangs";
-        case "perk_machine_boom":
-            return "Bomb Stoppers";
-        case "perk_machine_zap":
-            return "Blue Boltz";
-        case "perk_machine_fwoosh":
-            return "Trail Blazers";  
-        case "perk_machine_smack":
-            return "Slappy Taffy";  
-        case "perk_machine_deadeye":
-            return "Deadeye Dewdrops";  
-        case "perk_machine_change":
-            return "Change Chews";  
-        default:
-            break;
+    case "perk_machine_revive":
+        return "Up n Atoms";
+    case "perk_machine_tough":
+        return "Tuff Enuff";
+    case "perk_machine_run":
+        return "Racing Stripes";
+    case "perk_machine_flash":
+        return "Quickies";
+    case "perk_machine_more":
+        return "Mule Munchies";
+    case "perk_machine_rat_a_tat":
+        return "Bang Bangs";
+    case "perk_machine_boom":
+        return "Bomb Stoppers";
+    case "perk_machine_zap":
+        return "Blue Boltz";
+    case "perk_machine_fwoosh":
+        return "Trail Blazers";
+    case "perk_machine_smack":
+        return "Slappy Taffy";
+    case "perk_machine_deadeye":
+        return "Deadeye Dewdrops";
+    case "perk_machine_change":
+        return "Change Chews";
+    default:
+        break;
     }
 }
 
 set_starter_perks()
 {
-	self scripts\cp\utility::giveperk("specialty_quickswap");
-	self scripts\cp\utility::giveperk("specialty_stalker");
-	self scripts\cp\utility::giveperk("specialty_fastoffhand");
-	self scripts\cp\utility::giveperk("specialty_quickdraw");
-	self scripts\cp\utility::giveperk("specialty_longersprint");
-	self scripts\cp\utility::giveperk("specialty_fastsprintrecovery");
-	self scripts\cp\utility::giveperk("specialty_reducedsway");
-	self scripts\cp\utility::giveperk("specialty_bulletpenetration");
-	self scripts\cp\utility::giveperk("specialty_marathon");
+    self scripts\cp\utility::giveperk("specialty_quickswap");
+    self scripts\cp\utility::giveperk("specialty_stalker");
+    self scripts\cp\utility::giveperk("specialty_fastoffhand");
+    self scripts\cp\utility::giveperk("specialty_quickdraw");
+    self scripts\cp\utility::giveperk("specialty_longersprint");
+    self scripts\cp\utility::giveperk("specialty_fastsprintrecovery");
+    self scripts\cp\utility::giveperk("specialty_reducedsway");
+    self scripts\cp\utility::giveperk("specialty_bulletpenetration");
+    self scripts\cp\utility::giveperk("specialty_marathon");
 
-	// i actually have no clue what these do but whatever
-	self setaimspreadmovementscale(0.5);
-	self.perk_data["damagemod"].bullet_damage_scalar = 1.5;
-	self.movespeedscaler = 1.1 * scripts\cp\perks\prestige::prestige_getmoveslowscalar();
-	self.perk_data["gunslinger"].var_8723 = self.movespeedscaler;
+    // i actually have no clue what these do but whatever
+    self setaimspreadmovementscale(0.5);
+    self.perk_data["damagemod"].bullet_damage_scalar = 1.5;
+    self.movespeedscaler = 1.1 * scripts\cp\perks\prestige::prestige_getmoveslowscalar();
+    self.perk_data["gunslinger"].var_8723 = self.movespeedscaler;
 }
 
 // gestures
@@ -428,7 +428,7 @@ bounce_loop()
 {
     while(!isdefined(undefined))
     {
-        for(i=1;i<int(self getpers("bouncecount")) + 1;i++)
+        for(i=1; i<int(self getpers("bouncecount")) + 1; i++)
         {
             pos = perstovector(self getpers("bouncepos" + i));
             if (distance(self getorigin(), pos) < 90 && self getvelocity()[2] < -250)
@@ -561,7 +561,7 @@ loop_auto_prone()
     self endon("temp_end");
     self endon("stop_auto_prone");
     self endon("disconnect");
-    level endon("game_ended"); 
+    level endon("game_ended");
 
     for(;;)
     {
@@ -590,7 +590,7 @@ auto_reload()
     self endon("stop_autoreload");
     self endon("disconnect");
     self waittill("next_wave_notify");
-    
+
     weapon = self getcurrentweapon();
     self setweaponammoclip(weapon, 0);
 
@@ -608,7 +608,7 @@ outline_zombies()
     else
     {
         self notify("stop_outlining_zombies");
-        
+
         foreach(zombie in get_zombies())
         {
             scripts\cp\cp_outline::disable_outline_for_players(zombie, get_players());
@@ -641,20 +641,20 @@ set_outline_color(value)
     self.outline_color = value;
 }
 
-spawn_zombie(archetype) 
+spawn_zombie(archetype)
 {
     team = "axis";
 
-    if (archetype == "zombie_grey") 
+    if (archetype == "zombie_grey")
     {
         weapon = "iw7_zapper_grey";
-    } 
-    else if (archetype == "the_hoff" || archetype == "pamgrier" || archetype == "elvira") 
+    }
+    else if (archetype == "the_hoff" || archetype == "pamgrier" || archetype == "elvira")
     {
         weapon = "iw7_ake_zmr+akepap2";
         team = "allies";
-    } 
-    else 
+    }
+    else
     {
         weapon = undefined;
     }
@@ -667,13 +667,13 @@ set_round(value)
     level.wave_num = value;
 }
 
-hide_ui() 
+hide_ui()
 {
     self.hide_ui = !toggle(self.hide_ui);
     setdvar("cg_draw2d", !self.hide_ui);
 }
 
-toggle_branding() 
+toggle_branding()
 {
     self.branding = !toggle(self.branding);
     setdvar("branding", !self.branding);
@@ -713,7 +713,7 @@ frozen_box_loop()
 
 set_max_bank()
 {
-    level.atm_amount_deposited = 2147483647; 
+    level.atm_amount_deposited = 2147483647;
 }
 
 demi_god()
@@ -768,10 +768,10 @@ toggle_exo_movement()
     }
 }
 
-self_revive_loop() 
+self_revive_loop()
 {
     level endon("game_ended");
-    for(;;) 
+    for(;;)
     {
         self.self_revive = 1;
         wait 3;
@@ -795,7 +795,7 @@ toggle_aimbot()
 }
 
 /*
-aimbot() 
+aimbot()
 {
     self endon("disconnect");
     self endon("stop_aimbot");
@@ -804,12 +804,12 @@ aimbot()
     {
         self waittill("weapon_fired");
 
-        foreach(zombie in get_zombies()) 
+        foreach(zombie in get_zombies())
         {
             if (self getcurrentweapon() == self.aimbot_weapon)
             {
                 trace = self bullet_trace();
-                if (distance(zombie.origin, trace) < self.aimbot_range) 
+                if (distance(zombie.origin, trace) < self.aimbot_range)
                 {
                     // so we have to do a dodamage call here because callbackplayerdamage cries for some reason
                     // i really need to find the red hitmarker feedback idk what the shader is lol
@@ -820,7 +820,7 @@ aimbot()
                     self scripts\cp\cp_damage::updatedamagefeedback("hitcritical");
                 }
             }
-        }	
+        }
     }
 }
 */
@@ -830,7 +830,7 @@ aimbot() // from lurkzy
     while(true)
     {
         self waittill("weapon_fired", weapon);
-        
+
         if(weapon == self.aimbot_weapon && !level.is_recording)
         {
             foreach(zombie in get_zombies())
@@ -850,23 +850,23 @@ aimbot() // from lurkzy
 
 get_random_hitloc()
 {
-	data = [];
-	data[data.size] = "j_hip_ri:right_leg_upper:MOD_RIFLE_BULLET:flesh_body";
-	data[data.size] = "j_hip_le:left_leg_upper:MOD_RIFLE_BULLET:flesh_body";
-	data[data.size] = "j_spineupper:torso_lower:MOD_RIFLE_BULLET:flesh_body";
-	data[data.size] = "j_spinelower:torso_lower:MOD_RIFLE_BULLET:flesh_body";
-	data[data.size] = "j_mainroot:torso_lower:MOD_RIFLE_BULLET:flesh_body";
-	data[data.size] = "j_clavicle_ri:torso_upper:MOD_RIFLE_BULLET:flesh_body";
-	data[data.size] = "j_clavicle_le:torso_upper:MOD_RIFLE_BULLET:flesh_body";
-	data[data.size] = "j_shoulder_ri:right_arm_upper:MOD_RIFLE_BULLET:flesh_body";
-	data[data.size] = "j_shoulder_le:left_arm_upper:MOD_RIFLE_BULLET:flesh_body";
-	data[data.size] = "j_neck:neck:MOD_HEAD_SHOT:flesh_head";
-	data[data.size] = "j_head:head:MOD_HEAD_SHOT:flesh_head";
-	data[data.size] = "j_elbow_ri:right_arm_lower:MOD_RIFLE_BULLET:flesh_body";
-	data[data.size] = "j_elbow_le:left_arm_lower:MOD_RIFLE_BULLET:flesh_body";
-	data[data.size] = "j_wrist_ri:right_hand:MOD_RIFLE_BULLET:flesh_body";
-	data[data.size] = "j_wrist_le:left_hand:MOD_RIFLE_BULLET:flesh_body";
-	return strTok( data[ randomInt( data.size ) ], ":" );
+    data = [];
+    data[data.size] = "j_hip_ri:right_leg_upper:MOD_RIFLE_BULLET:flesh_body";
+    data[data.size] = "j_hip_le:left_leg_upper:MOD_RIFLE_BULLET:flesh_body";
+    data[data.size] = "j_spineupper:torso_lower:MOD_RIFLE_BULLET:flesh_body";
+    data[data.size] = "j_spinelower:torso_lower:MOD_RIFLE_BULLET:flesh_body";
+    data[data.size] = "j_mainroot:torso_lower:MOD_RIFLE_BULLET:flesh_body";
+    data[data.size] = "j_clavicle_ri:torso_upper:MOD_RIFLE_BULLET:flesh_body";
+    data[data.size] = "j_clavicle_le:torso_upper:MOD_RIFLE_BULLET:flesh_body";
+    data[data.size] = "j_shoulder_ri:right_arm_upper:MOD_RIFLE_BULLET:flesh_body";
+    data[data.size] = "j_shoulder_le:left_arm_upper:MOD_RIFLE_BULLET:flesh_body";
+    data[data.size] = "j_neck:neck:MOD_HEAD_SHOT:flesh_head";
+    data[data.size] = "j_head:head:MOD_HEAD_SHOT:flesh_head";
+    data[data.size] = "j_elbow_ri:right_arm_lower:MOD_RIFLE_BULLET:flesh_body";
+    data[data.size] = "j_elbow_le:left_arm_lower:MOD_RIFLE_BULLET:flesh_body";
+    data[data.size] = "j_wrist_ri:right_hand:MOD_RIFLE_BULLET:flesh_body";
+    data[data.size] = "j_wrist_le:left_hand:MOD_RIFLE_BULLET:flesh_body";
+    return strTok( data[ randomInt( data.size ) ], ":" );
 }
 
 // set to int & floats just incase here
@@ -970,10 +970,10 @@ set_spectator()
     }
 }
 
-spawn_powerup(powerup) 
+spawn_powerup(powerup)
 {
     trace = self bullet_trace();
-	level scripts\cp\loot::drop_loot(trace, undefined, powerup, undefined, undefined, 1);
+    level scripts\cp\loot::drop_loot(trace, undefined, powerup, undefined, undefined, 1);
 }
 
 derank()
@@ -1093,7 +1093,7 @@ nac_bind()
         {
             self nacto(self.weapon_two);
         }
-        else 
+        else
         {
             if (self getcurrentweapon() == self.weapon_two)
             {
@@ -1103,12 +1103,12 @@ nac_bind()
     }
 }
 
-nacto(weapon) 
+nacto(weapon)
 {
     current = self getcurrentweapon();
     self take_weapon(current);
 
-    if (!self hasweapon(weapon)) 
+    if (!self hasweapon(weapon))
     {
         self giveweapon(weapon);
     }
@@ -1118,12 +1118,12 @@ nacto(weapon)
     self give_weapon(current);
 }
 
-instaswapto(weapon) 
+instaswapto(weapon)
 {
     current = self getcurrentweapon();
     self take_weapon(current);
 
-    if (!self hasweapon(weapon)) 
+    if (!self hasweapon(weapon))
     {
         self giveweapon(weapon);
     }
@@ -1133,9 +1133,9 @@ instaswapto(weapon)
     self give_weapon(current);
 }
 
-take_weapon(weapon) 
+take_weapon(weapon)
 {
-    if (!isdefined(self.givetake_weapons)) 
+    if (!isdefined(self.givetake_weapons))
     {
         self.givetake_weapons = [];
     }
@@ -1148,11 +1148,11 @@ take_weapon(weapon)
     self takeweapon(weapon);
 }
 
-give_weapon(weapon) 
+give_weapon(weapon)
 {
     self giveweapon(weapon);
 
-    if (isdefined(self.givetake_weapons) && isdefined(self.givetake_weapons[weapon])) 
+    if (isdefined(self.givetake_weapons) && isdefined(self.givetake_weapons[weapon]))
     {
         self setweaponammostock(weapon, self.givetake_weapons[weapon].stock);
         self setweaponammoclip(weapon, self.givetake_weapons[weapon].clip[0], "right");
@@ -1160,7 +1160,7 @@ give_weapon(weapon)
     }
 }
 
-set_prestige(value) 
+set_prestige(value)
 {
     self setplayerdata("cp", "progression", "playerLevel", "prestige", value);
 }
@@ -1173,11 +1173,11 @@ set_rank(value)
 
 set_max_weapons()
 {
-    for(x = 1; x < 62; x++) 
+    for(x = 1; x < 62; x++)
     {
         weapon = TableLookup("mp/statstable.csv", 0, x, 4);
 
-        if (!isdefined(weapon) || weapon == "") 
+        if (!isdefined(weapon) || weapon == "")
         {
             continue;
         }
@@ -1195,30 +1195,31 @@ complete_challenges()
 {
     merits = getarraykeys(level.meritinfo);
 
-    if (!isdefined(merits) || !merits.size) {
+    if (!isdefined(merits) || !merits.size)
+    {
         return;
     }
 
-    foreach(merit in merits) 
+    foreach(merit in merits)
     {
         meritInfo = level.meritinfo[merit]["targetval"];
         meritState = self getrankedplayerdata("cp", "meritState", merit);
         meritProgress = self getrankedplayerdata("cp", "meritProgress", merit);
 
-        if (!isdefined(meritInfo)) 
+        if (!isdefined(meritInfo))
         {
             continue;
         }
 
-        if (meritState < meritInfo.size || meritProgress < meritInfo[(meritInfo.size - 1)]) 
+        if (meritState < meritInfo.size || meritProgress < meritInfo[(meritInfo.size - 1)])
         {
-            if (meritProgress < meritInfo[(meritInfo.size - 1)]) 
+            if (meritProgress < meritInfo[(meritInfo.size - 1)])
             {
                 self setplayerdata("cp", "meritProgress", merit, meritInfo[(meritInfo.size - 1)]);
                 self iprintlnbold("completed challenge " + merit);
             }
 
-            if (meritState < meritInfo.size) 
+            if (meritState < meritInfo.size)
             {
                 self setplayerdata("cp", "meritState", merit, meritInfo.size);
                 self iprintlnbold("completed challenge " + merit);
@@ -1233,17 +1234,17 @@ complete_active_contracts()
 {
     contracts = getarraykeys(self.contracts);
 
-    if (!isdefined(contracts) || !contracts.size) 
+    if (!isdefined(contracts) || !contracts.size)
     {
         return;
     }
 
-    foreach(contract in contracts) 
+    foreach(contract in contracts)
     {
         target = self.contracts[contract].target;
         progress = self getrankedplayerdata("cp", "contracts", "challenges", contract, "progress");
 
-        if (!isdefined(progress) || !isdefined(target) || progress >= target) 
+        if (!isdefined(progress) || !isdefined(target) || progress >= target)
         {
             continue;
         }
@@ -1255,7 +1256,7 @@ complete_active_contracts()
     }
 }
 
-unlock_soul_keys() 
+unlock_soul_keys()
 {
     self setplayerdata("cp", "haveSoulKeys", "soul_key_1", 1);
     self setplayerdata("cp", "haveSoulKeys", "soul_key_2", 1);
@@ -1270,33 +1271,35 @@ unlock_soul_keys()
     self set_position((-10250, 875, -1630), (0, 90, 0));
 }
 
-temp_directors_cut() 
+temp_directors_cut()
 {
     self.temp_directors_cut = !toggle(self.temp_directors_cut);
 
-    if (self.temp_directors_cut) 
+    if (self.temp_directors_cut)
     {
         self setplayerdata("cp", "dc", 1);
-    } 
-    else 
+    }
+    else
     {
         self setplayerdata("cp", "dc", 0);
     }
 }
 
-itr_weapons() 
+itr_weapons()
 {
-    for(i=0;i<128;i++)
+    level.weaponArray = [];
+
+    for(i=0; i<128; i++)
     {
-        if(level.script == "cp_zmb")
+        if (level.script == "cp_zmb")
             weapons_table = "cp/cp_weapontable.csv";
         else
             weapons_table = "cp/" + level.script + "_weapontable.csv";
-            
+
         internalname = tablelookupbyrow(weapons_table, i, 1);
         if(internalname == "")
             continue;
-        
+
         level.weaponArray[level.weaponArray.size] = internalname;
     }
 }

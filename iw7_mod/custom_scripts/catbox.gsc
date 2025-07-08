@@ -143,11 +143,36 @@ init()
     level thread overflow_fix_init();
 }
 
-on_player_connect() 
+initfinalkillcamteam(team)
+{
+    level.finalkillcam_delay[team] = undefined;
+    level.finalkillcam_victim[team] = undefined;
+    level.finalkillcam_victim_deathtime = undefined;
+    level.finalkillcam_attacker[team] = undefined;
+    level.finalkillcam_attackernum[team] = undefined;
+    level.finalKillCam_inflictor[team] = undefined;
+    level.finalKillCam_inflictor_agent_type[team] = undefined;
+    level.finalKillCam_inflictor_lastSpawnTime[team] = undefined;
+    level.finalkillcam_killcamentityindex[team] = undefined;
+    level.finalkillcam_killcamentitystarttime[team] = undefined;
+    level.finalkillcam_killcamentitystickstovictim[team] = undefined;
+    level.finalkillcam_sweapon[team] = undefined;
+    level.finalkillcam_deathtimeoffset[team] = undefined;
+    level.finalkillcam_psoffsettime[team] = undefined;
+    level.finalkillcam_timerecorded[team] = undefined;
+    level.finalkillcam_timegameended[team] = undefined;
+    level.finalkillcam_smeansofdeath[team] = undefined;
+    level.finalkillcam_attackers[team] = undefined;
+    level.finalkillcam_attackerdata[team] = undefined;
+    level.finalkillcam_attackerperks[team] = undefined;
+    level.finalkillcam_killstreakvariantinfo[team] = undefined;
+}
+
+on_player_connect()
 {
     level endon("game_ended");
 
-    for(;;) 
+    for(;;)
     {
         level waittill("connected", player);
 
@@ -191,7 +216,7 @@ on_event()
             }
 
             // fix threads not going through on initial restart
-            if (getdvarint("is_debug") == 1 && getdvarint("init_debug") != 1) 
+            if (getdvarint("is_debug") == 1 && getdvarint("init_debug") != 1)
             {
                 setdvar("init_debug", 1);
                 self iprintlnbold("^:debug enabled - restarting in a sec");
@@ -237,7 +262,7 @@ on_event()
             self _meth_8009(true);
             self _meth_80D6();
             self _meth_84DD(true);
-            
+
             // setup starting class - base this by map soon
             self.weapon_list = list("frag_grenade_zm,iw7_knife_zm,iw7_spas_zmr+loot0,iw7_cheytacc_zm+cheytacscope_camo"); // equipment to primary
 
