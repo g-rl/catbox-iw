@@ -1,0 +1,1 @@
+iw7-mod.exe -nosteam -noupdate
